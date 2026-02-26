@@ -1,0 +1,245 @@
+digraph OSforGFF {
+  rankdir=BT;
+  ranksep=0.8;
+  nodesep=0.4;
+  node [shape=box, fontsize=11, style=filled, fillcolor=white];
+  edge [color=gray40];
+
+  // Color key files
+  "GFFmaster" [fillcolor=lightyellow, penwidth=2];
+  "Basic" [fillcolor=lightblue];
+  "OS_Axioms" [fillcolor=lightgreen];
+  "HermiteTensorProduct" [fillcolor=lightsalmon, label="HermiteTensorProduct\n(17 sorries)"];
+
+  // Dead code (not in master chain)
+  "Minlos" [fillcolor=gray90, style="filled,dashed"];
+  "MinlosAnalytic" [fillcolor=gray90, style="filled,dashed"];
+  "NuclearSpace" [fillcolor=gray90, style="filled,dashed"];
+  "NuclearSVDProof" [fillcolor=gray90, style="filled,dashed"];
+
+  // === Hermite / Spectral chain (new) ===
+  "HermiteTensorProduct" -> "SchwartzHermiteExpansion";
+  "SchwartzHermiteExpansion" -> "HermiteFunctions";
+  "NuclearFactorizationProof" -> "HermiteTensorProduct";
+  "SpectralFactorization" -> "SpectralTheorem";
+  "SpectralFactorization" -> "NuclearFactorizationProof";
+  "SpectralFactorization" -> "NuclearSVDProof";
+  "SpectralTheorem" -> "CompactEigenvector";
+  "SpectralTheorem" -> "EigenspaceSpan";
+  "NuclearSVDProof" -> "SpectralTheorem";
+  "GFFSeries" -> "SpectralFactorization";
+  "GFFSeries" -> "NuclearConvergence";
+  "GFFSeries" -> "NuclearFactorizationProof";
+  "GFFSeries" -> "Basic";
+  "GFFSeries" -> "CovarianceR";
+  "GFFSeries" -> "FunctionalAnalysis";
+
+  // === Measure construction ===
+  "GFFMconstruct" -> "Basic";
+  "GFFMconstruct" -> "Schwinger";
+  "GFFMconstruct" -> "GFFSeries";
+  "GFFMconstruct" -> "Covariance";
+  "GFFMconstruct" -> "CovarianceR";
+  "GFFMconstruct" -> "ComplexTestFunction";
+
+  // === Master theorem ===
+  "GFFmaster" -> "GaussianFreeField";
+  "GFFmaster" -> "OS0_GFF";
+  "GFFmaster" -> "OS1_GFF";
+  "GFFmaster" -> "OS2_GFF";
+  "GFFmaster" -> "OS3_GFF";
+  "GFFmaster" -> "OS4_Clustering";
+  "GFFmaster" -> "OS4_Ergodicity";
+
+  // === GFF assembly ===
+  "GaussianFreeField" -> "Basic";
+  "GaussianFreeField" -> "OS_Axioms";
+  "GaussianFreeField" -> "GFFMconstruct";
+  "GaussianFreeField" -> "GFFIsGaussian";
+  "GaussianFreeField" -> "Euclidean";
+  "GaussianFreeField" -> "DiscreteSymmetry";
+  "GaussianFreeField" -> "FunctionalAnalysis";
+  "GaussianFreeField" -> "Covariance";
+  "GaussianFreeField" -> "Schwinger";
+  "GaussianMoments" -> "Basic";
+  "GaussianMoments" -> "Schwinger";
+  "GaussianMoments" -> "GFFMconstruct";
+  "GFFIsGaussian" -> "OS0_GFF";
+  "GFFIsGaussian" -> "GaussianMoments";
+  "GFFExponentialIntegrability" -> "Basic";
+  "GFFExponentialIntegrability" -> "ComplexTestFunction";
+  "GFFExponentialIntegrability" -> "GFFMconstruct";
+
+  // === OS0 ===
+  "OS0_GFF" -> "Basic";
+  "OS0_GFF" -> "GFFSeries";
+  "OS0_GFF" -> "GFFMconstruct";
+  "OS0_GFF" -> "ComplexTestFunction";
+  "OS0_GFF" -> "GFFExponentialIntegrability";
+  "OS0_GFF" -> "OS_Axioms";
+
+  // === OS1 ===
+  "OS1_GFF" -> "Basic";
+  "OS1_GFF" -> "OS_Axioms";
+  "OS1_GFF" -> "Covariance";
+  "OS1_GFF" -> "CovarianceMomentum";
+  "OS1_GFF" -> "CovarianceR";
+  "OS1_GFF" -> "GFFMconstruct";
+  "OS1_GFF" -> "GFFIsGaussian";
+
+  // === OS2 ===
+  "OS2_GFF" -> "GFFIsGaussian";
+  "OS2_GFF" -> "Covariance";
+  "OS2_GFF" -> "Euclidean";
+  "OS2_GFF" -> "GaussianFreeField";
+
+  // === OS3 ===
+  "OS3_GFF" -> "Basic";
+  "OS3_GFF" -> "PositiveTimeTestFunction_real";
+  "OS3_GFF" -> "DiscreteSymmetry";
+  "OS3_GFF" -> "OS_Axioms";
+  "OS3_GFF" -> "GFFMconstruct";
+  "OS3_GFF" -> "HadamardExp";
+  "OS3_GFF" -> "CovarianceR";
+  "OS3_GFF" -> "OS3_ReflectionPositivity";
+  "OS3_GFF" -> "GFFIsGaussian";
+  "OS3_ReflectionPositivity" -> "OS3_CovarianceRP";
+  "OS3_ReflectionPositivity" -> "PositiveTimeTestFunction_real";
+  "OS3_ReflectionPositivity" -> "Parseval";
+  "OS3_ReflectionPositivity" -> "Covariance";
+  "OS3_CovarianceRP" -> "Basic";
+  "OS3_CovarianceRP" -> "QFTHilbertSpace";
+  "OS3_CovarianceRP" -> "PositiveTimeTestFunction_real";
+  "OS3_CovarianceRP" -> "FourierTransforms";
+  "OS3_CovarianceRP" -> "CovarianceMomentum";
+  "OS3_CovarianceRP" -> "OS3_MixedRep";
+  "OS3_CovarianceRP" -> "OS3_MixedRepInfra";
+  "OS3_MixedRep" -> "OS3_MixedRepInfra";
+  "OS3_MixedRepInfra" -> "Basic";
+  "OS3_MixedRepInfra" -> "QFTHilbertSpace";
+  "OS3_MixedRepInfra" -> "Euclidean";
+  "OS3_MixedRepInfra" -> "DiscreteSymmetry";
+  "OS3_MixedRepInfra" -> "Schwinger";
+  "OS3_MixedRepInfra" -> "FunctionalAnalysis";
+  "OS3_MixedRepInfra" -> "CovarianceMomentum";
+  "OS3_MixedRepInfra" -> "Covariance";
+  "OS3_MixedRepInfra" -> "FourierTransforms";
+  "OS3_MixedRepInfra" -> "OS_Axioms";
+  "OS3_MixedRepInfra" -> "SchwartzProdIntegrable";
+  "OS3_MixedRepInfra" -> "SpacetimeDecomp";
+  "OS3_MixedRepInfra" -> "SchwartzTonelli";
+  "OS3_MixedRepInfra" -> "LaplaceIntegral";
+
+  // === OS4 ===
+  "OS4_Clustering" -> "Basic";
+  "OS4_Clustering" -> "Schwinger";
+  "OS4_Clustering" -> "GFFMconstruct";
+  "OS4_Clustering" -> "GFFIsGaussian";
+  "OS4_Clustering" -> "GaussianFreeField";
+  "OS4_Clustering" -> "OS2_GFF";
+  "OS4_Clustering" -> "Covariance";
+  "OS4_Clustering" -> "CovarianceMomentum";
+  "OS4_Clustering" -> "OS_Axioms";
+  "OS4_Clustering" -> "FunctionalAnalysis";
+  "OS4_Clustering" -> "ComplexTestFunction";
+  "OS4_Clustering" -> "QuantitativeDecay";
+  "OS4_Clustering" -> "TimeTranslation";
+  "OS4_Clustering" -> "OS4_MGF";
+  "OS4_Ergodicity" -> "Basic";
+  "OS4_Ergodicity" -> "Schwinger";
+  "OS4_Ergodicity" -> "GFFMconstruct";
+  "OS4_Ergodicity" -> "GFFIsGaussian";
+  "OS4_Ergodicity" -> "GFFExponentialIntegrability";
+  "OS4_Ergodicity" -> "OS2_GFF";
+  "OS4_Ergodicity" -> "ComplexTestFunction";
+  "OS4_Ergodicity" -> "TimeTranslation";
+  "OS4_Ergodicity" -> "CovarianceMomentum";
+  "OS4_Ergodicity" -> "OS_Axioms";
+  "OS4_Ergodicity" -> "L2TimeIntegral";
+  "OS4_Ergodicity" -> "SchwartzTranslationDecay";
+  "OS4_Ergodicity" -> "OS4_MGF";
+  "OS4_MGF" -> "Basic";
+  "OS4_MGF" -> "Schwinger";
+  "OS4_MGF" -> "GFFMconstruct";
+  "OS4_MGF" -> "GFFIsGaussian";
+  "OS4_MGF" -> "GFFExponentialIntegrability";
+  "OS4_MGF" -> "OS2_GFF";
+  "OS4_MGF" -> "ComplexTestFunction";
+  "OS4_MGF" -> "TimeTranslation";
+  "OS4_MGF" -> "CovarianceMomentum";
+  "OS4_MGF" -> "OS_Axioms";
+
+  // === Foundation layers ===
+  "Basic" -> "FunctionalAnalysis";
+  "BesselFunction" -> "Euclidean";
+  "ComplexTestFunction" -> "Basic";
+  "Covariance" -> "Basic";
+  "Covariance" -> "QFTHilbertSpace";
+  "Covariance" -> "Euclidean";
+  "Covariance" -> "DiscreteSymmetry";
+  "Covariance" -> "Schwinger";
+  "Covariance" -> "FunctionalAnalysis";
+  "Covariance" -> "CovarianceMomentum";
+  "Covariance" -> "FourierTransforms";
+  "Covariance" -> "Parseval";
+  "CovarianceMomentum" -> "Basic";
+  "CovarianceMomentum" -> "QFTHilbertSpace";
+  "CovarianceMomentum" -> "Euclidean";
+  "CovarianceMomentum" -> "DiscreteSymmetry";
+  "CovarianceMomentum" -> "Schwinger";
+  "CovarianceMomentum" -> "FunctionalAnalysis";
+  "CovarianceMomentum" -> "BesselFunction";
+  "CovarianceR" -> "Basic";
+  "CovarianceR" -> "PositiveTimeTestFunction_real";
+  "CovarianceR" -> "DiscreteSymmetry";
+  "CovarianceR" -> "Covariance";
+  "CovarianceR" -> "ComplexTestFunction";
+  "CovarianceR" -> "QFTHilbertSpace";
+  "CovarianceR" -> "CovarianceMomentum";
+  "DiscreteSymmetry" -> "Basic";
+  "DiscreteSymmetry" -> "Euclidean";
+  "Euclidean" -> "Basic";
+  "OS_Axioms" -> "Basic";
+  "OS_Axioms" -> "Schwinger";
+  "OS_Axioms" -> "FunctionalAnalysis";
+  "OS_Axioms" -> "Euclidean";
+  "OS_Axioms" -> "DiscreteSymmetry";
+  "OS_Axioms" -> "PositiveTimeTestFunction_real";
+  "OS_Axioms" -> "ComplexTestFunction";
+  "OS_Axioms" -> "TimeTranslation";
+  "OS_Axioms" -> "SchwingerTwoPointFunction";
+  "Parseval" -> "FourierTransforms";
+  "Parseval" -> "CovarianceMomentum";
+  "PositiveTimeTestFunction_real" -> "Basic";
+  "PositiveTimeTestFunction_real" -> "DiscreteSymmetry";
+  "QFTHilbertSpace" -> "Basic";
+  "QuantitativeDecay" -> "SchwartzTranslationDecay";
+  "SchurProduct" -> "FrobeniusPositivity";
+  "GaussianRBF" -> "PositiveDefinite";
+  "GaussianRBF" -> "SchurProduct";
+  "GaussianRBF" -> "HadamardExp";
+  "HadamardExp" -> "SchurProduct";
+  "SchwartzProdIntegrable" -> "FunctionalAnalysis";
+  "SchwartzProdIntegrable" -> "Basic";
+  "SchwartzTonelli" -> "Basic";
+  "SchwartzTonelli" -> "SpacetimeDecomp";
+  "Schwinger" -> "Basic";
+  "Schwinger" -> "FunctionalAnalysis";
+  "Schwinger" -> "ComplexTestFunction";
+  "SchwingerTwoPointFunction" -> "Basic";
+  "SchwingerTwoPointFunction" -> "Schwinger";
+  "SpacetimeDecomp" -> "Basic";
+  "SpacetimeDecomp" -> "QFTHilbertSpace";
+  "SpacetimeDecomp" -> "SchwartzProdIntegrable";
+  "TimeTranslation" -> "Basic";
+
+  // Dead code edges
+  "Minlos" -> "PositiveDefinite";
+  "Minlos" -> "GaussianRBF";
+  "Minlos" -> "NuclearSpace";
+  "MinlosAnalytic" -> "Basic";
+  "MinlosAnalytic" -> "Minlos";
+
+  // === Eigenspace chain ===
+  "EigenspaceSpan" -> "CompactEigenvector";
+}

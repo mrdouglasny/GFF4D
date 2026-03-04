@@ -11,9 +11,13 @@ package «OSforGFF» where
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "6dc31c12d6f"
 
-require BochnerMinlos from git
-  "https://github.com/mrdouglasny/bochner.git" @ "3a5c8fc"
-
 @[default_target]
 lean_lib «OSforGFF» where
   -- add any library configuration options here
+
+lean_lib «certificates» where
+  roots := #[`certificates.CertificateSchema,
+             `certificates.import.SchwartzIsHilbertNuclear,
+             `certificates.import.SchwartzSeparableSpace,
+             `certificates.import.MinlosTheorem,
+             `certificates.import.MinlosUniqueness]

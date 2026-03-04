@@ -107,7 +107,7 @@ lemma integral_neg_invariance
   (h_realCF : ∀ f : TestFunction,
      ∫ ω, Complex.exp (Complex.I * (ω f)) ∂μ.toMeasure
        = Complex.exp (-(1/2 : ℂ) * (C.Q f f)))
-  (h_cf_pd : IsPositiveDefinite
+  (h_cf_pd : BochnerPD
     (fun f : TestFunction => Complex.exp (-(1/2 : ℂ) * (C.Q f f : ℂ)))) :
   ∀ (f : FieldConfiguration → ℂ), Integrable f μ.toMeasure →
     ∫ ω, f ω ∂μ.toMeasure = ∫ ω, f (-ω) ∂μ.toMeasure := by
@@ -232,7 +232,7 @@ lemma moment_zero_from_realCF
   (h_realCF : ∀ f : TestFunction,
      ∫ ω, Complex.exp (Complex.I * (ω f)) ∂μ.toMeasure
        = Complex.exp (-(1/2 : ℂ) * (C.Q f f)))
-  (h_cf_pd : IsPositiveDefinite
+  (h_cf_pd : BochnerPD
     (fun f : TestFunction => Complex.exp (-(1/2 : ℂ) * (C.Q f f : ℂ))))
   (a : TestFunction)
   (hInt1 : Integrable (fun ω => (ω a : ℂ)) μ.toMeasure) :

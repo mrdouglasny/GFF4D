@@ -260,26 +260,68 @@ Mathlib's `gaussianReal` API. -/
     Derived from: the mean of gaussianReal 0 σ² is 0. -/
 theorem gfMeasure_centered (m : ℝ) [Fact (0 < m)] (f : TestFunction) :
     ∫ ω, distributionPairingCLM f ω ∂(gfMeasure m).toMeasure = 0 := by
-  -- ∫ ω, ω(f) dμ = ∫ x, x d(μ.map(eval f)) = ∫ x, x d(gaussianReal 0 σ²) = 0
   simp only [distributionPairingCLM_apply, distributionPairing]
-  sorry
+  have h_gauss : (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω f)
+      = gaussianReal 0 (freeCovarianceFormR m f f).toNNReal := by
+    have := gfMeasure_pairing_is_gaussian m f
+    simp only [distributionPairingCLM_apply, distributionPairing] at this
+    exact this
+  have h_map := integral_map (fieldConfiguration_eval_measurable f).aemeasurable
+    (measurable_id.aestronglyMeasurable
+      (μ := (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω f)))
+  simp only [id] at h_map
+  rw [h_map.symm, h_gauss, integral_id_gaussianReal]
 
 /-- Second moment: E[ω(f)²] = C(f,f).
     Derived from: the variance of gaussianReal 0 σ² is σ². -/
 theorem gfMeasure_second_moment (m : ℝ) [Fact (0 < m)] (φ : TestFunction) :
     ∫ ω, (distributionPairingCLM φ ω)^2 ∂(gfMeasure m).toMeasure =
     freeCovarianceFormR m φ φ := by
-  -- ∫ ω, ω(φ)² dμ = ∫ x, x² d(gaussianReal 0 σ²) = 0² + σ² = C(φ,φ)
   simp only [distributionPairingCLM_apply, distributionPairing]
-  sorry
+  -- Convert the Gaussian pushforward to use the lambda form
+  have h_gauss : (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω φ)
+      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal := by
+    have := gfMeasure_pairing_is_gaussian m φ
+    simp only [distributionPairingCLM_apply, distributionPairing] at this
+    exact this
+  set σ := (freeCovarianceFormR m φ φ).toNNReal with hσ_def
+  -- variance = second moment since mean = 0
+  have h_var : Var[fun ω : FieldConfiguration => ω φ; (gfMeasure m).toMeasure] =
+      ∫ ω, (ω φ) ^ 2 ∂(gfMeasure m).toMeasure :=
+    variance_of_integral_eq_zero
+      (fieldConfiguration_eval_measurable φ).aemeasurable
+      (gfMeasure_centered m φ)
+  -- Compute variance via pushforward
+  have h_var2 : Var[fun ω : FieldConfiguration => ω φ; (gfMeasure m).toMeasure] = σ := by
+    have h : Var[fun x : ℝ => x;
+        (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω φ)] =
+        Var[fun ω : FieldConfiguration => ω φ; (gfMeasure m).toMeasure] :=
+      variance_map aemeasurable_id (fieldConfiguration_eval_measurable φ).aemeasurable
+    rw [← h, h_gauss, variance_fun_id_gaussianReal]
+  rw [← h_var, h_var2, hσ_def]
+  exact Real.coe_toNNReal _ (freeCovarianceFormR_pos m φ)
 
 /-- Fernique-type: pairings are in Lᵖ for all finite p.
     Derived from: gaussianReal has all finite moments. -/
 theorem gfMeasure_pairing_memLp (m : ℝ) [Fact (0 < m)]
     (φ : TestFunction) (p : ENNReal) (hp : p ≠ ⊤) :
     MemLp (distributionPairingCLM φ) p (gfMeasure m).toMeasure := by
-  -- The pushforward is gaussianReal, which is IsGaussian, hence has all finite moments.
-  sorry
+  -- Convert to lambda form for compatibility with map lemmas
+  suffices h : MemLp (fun ω : FieldConfiguration => ω φ) p (gfMeasure m).toMeasure by
+    exact h
+  have h_gauss : (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω φ)
+      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal := by
+    have := gfMeasure_pairing_is_gaussian m φ
+    simp only [distributionPairingCLM_apply, distributionPairing] at this
+    exact this
+  have hp' : (p.toNNReal : ENNReal) = p := ENNReal.coe_toNNReal hp
+  rw [← hp']
+  have h_memLp : MemLp id p.toNNReal
+      (gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal) :=
+    memLp_id_gaussianReal p.toNNReal
+  rw [← h_gauss] at h_memLp
+  rwa [memLp_map_measure_iff h_memLp.aestronglyMeasurable
+    (fieldConfiguration_eval_measurable φ).aemeasurable] at h_memLp
 
 /-- Fernique exponential form: ∃ α > 0, exp(α·ω(f)²) is integrable.
     Derived from the Gaussian pushforward: the pairing has distribution N(0, σ²)

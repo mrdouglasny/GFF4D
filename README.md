@@ -21,11 +21,14 @@ theorem gaussianFreeField_satisfies_all_OS_axioms (m : ℝ) [Fact (0 < m)] :
 **Status:** The master theorem chain has **0 `sorry`** statements and **2 custom axioms**
 (`schwartz_isHilbertNuclear`: Schwartz space is Hilbert-nuclear;
 `schwartz_separableSpace`: Schwartz space is separable).
-`schwartz_separableSpace` is proved in the [gaussian-field](https://github.com/mrdouglasny/gaussian-field)
-library (`SchwartzNuclear.HermiteNuclear`) via the countable Hermite basis and
-the topological isomorphism `SchwartzMap D ℝ ≃L[ℝ] RapidDecaySeq`.
-`schwartz_isHilbertNuclear` can be derived from the `DyninMityaginSpace` instance
-proved there, by constructing Hilbertian seminorms from rapid-decay weights.
+Both axioms are proved in the [gaussian-field](https://github.com/mrdouglasny/gaussian-field) library:
+- `schwartz_separableSpace` is proved in `SchwartzNuclear.HermiteNuclear` via the
+  countable Hermite basis and `SchwartzMap D ℝ ≃L[ℝ] RapidDecaySeq`.
+- `schwartz_isHilbertNuclear` is proved in `SchwartzNuclear.HermiteNuclear` via
+  the chain `DyninMityaginSpace → NuclearSpace → IsNuclear → IsHilbertNuclear`,
+  bridging gaussian-field's Pietsch nuclearity to bochner's Hilbert-nuclear
+  characterization via `isHilbertNuclear_of_nuclear`, then transferring along the
+  CLE `schwartzRapidDecayEquiv`.
 ~31,000 lines of Lean across 50 files in `OSforGFF/`.
 
 ## Dependencies

@@ -11,7 +11,8 @@ package «OSforGFF» where
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "6dc31c12d6f"
 
-require BochnerMinlos from ".." / "bochner"
+require BochnerMinlos from git
+  "https://github.com/mrdouglasny/bochner.git" @ "3a5c8fc"
 
 @[default_target]
 lean_lib «OSforGFF» where

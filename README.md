@@ -258,8 +258,8 @@ in d = 3 spatial dimensions), then derives ergodicity via L² variance bounds.
 ## Building
 
 ```bash
-git clone https://github.com/mrdouglasny/aqft2.git
-cd aqft2
+git clone https://github.com/mrdouglasny/GFF4D.git
+cd GFF4D
 lake build
 ```
 

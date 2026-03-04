@@ -15,25 +15,31 @@ import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.Analysis.LocallyConvex.Basic
 import Mathlib.Topology.Algebra.Module.WeakDual
 import Mathlib.Analysis.Distribution.SchwartzSpace.Deriv
-import Nuclear.NuclearSpace
 import Mathlib.Data.Matrix.Basic
 import Mathlib.LinearAlgebra.Matrix.PosDef
 import Mathlib.Analysis.InnerProductSpace.EuclideanDist
 import Mathlib.Analysis.InnerProductSpace.PiL2
+-- Bochner/Minlos imports (proven theorems, replacing former axioms)
+import Minlos.Main
+import Minlos.PietschBridge
 
 /-!
 Minlos Theorem and Bochner's Theorem
 
-This file contains foundational results for constructing infinite-dimensional Gaussian measures,
-including Bochner's theorem for finite dimensions and the Minlos theorem for nuclear spaces.
+This file connects the GFF4D project to the bochner library's proven Minlos theorem.
+The `minlos_theorem` and `minlos_uniqueness` axioms that were previously in this file
+have been replaced by imports from the bochner library, which provides fully proven
+versions (0 sorries, 0 axioms).
 
 Key results:
-- IsPositiveDefinite: Definition of positive-definite functions
-- bochner_Rn: Bochner's theorem in finite dimensions (characteristic functions)
-- Future: Minlos theorem for infinite-dimensional construction
+- Bridge lemmas converting GFF4D's types to bochner's types
+- gaussian_characteristic_functional: Gaussian CF definition
+- gaussian_positive_definite_via_embedding: PD of Gaussian CF
+- minlos_gaussian_construction: Minlos applied to Gaussian measures
+- gaussian_measure_symmetry: Symmetry transfer via uniqueness
 -/
 
-open Complex MeasureTheory Matrix GaussianField
+open Complex MeasureTheory Matrix
 open BigOperators
 
 noncomputable section
@@ -42,10 +48,12 @@ noncomputable section
 
 This file contains the following axioms (see `texts/axioms.txt` for justification):
 - `schwartz_nuclear`: Schwartz space is nuclear (Gel'fand-Vilenkin, Trèves)
-- `minlos_theorem`: Minlos theorem for nuclear spaces
-- `minlos_uniqueness`: uniqueness for Minlos measures (used locally)
 - `bochner_Rn`: Bochner's theorem in finite dimensions
 - `levy_cf_uniqueness_Rn`: Lévy uniqueness for ℝⁿ
+
+Previously axioms, now proven via bochner library:
+- `minlos_theorem`: Minlos theorem for nuclear spaces (bochner: Minlos.Main)
+- `minlos_uniqueness`: uniqueness for Minlos measures (bochner: Minlos.Main)
 
 Previously an axiom, now proven in GaussianRBF.lean:
 - `gaussian_rbf_pd_innerProduct_proof`: Gaussian RBF kernel is positive definite
@@ -54,88 +62,68 @@ Previously an axiom, now proven in GaussianRBF.lean:
 
 /-! ## Positive Definiteness -/
 
--- `IsPositiveDefinite` is now defined in `OSforGFF.PositiveDefinite`
+-- `GFF4D.IsPositiveDefinite` (nonneg-only) is defined in `OSforGFF.PositiveDefinite`
+-- `IsPositiveDefinite` (hermitian + nonneg, structure) comes from bochner's `Bochner.PositiveDefinite`
+
+/-! ## Bridge: GFF4D's nonneg PD → bochner's full PD for real-valued functions
+
+For real-valued positive definite functions φ : α → ℝ (viewed as φ : α → ℂ via cast),
+the hermitian condition φ(-x) = conj(φ(x)) is automatic because conj acts as identity
+on reals. More generally, for functions of the form exp(r(x)) where r : α → ℝ,
+the hermitian condition follows from r(-x) = r(x) (even function). -/
+
+/-- For a function φ : α → ℂ that is real-valued (im = 0) and satisfies φ(-x) = φ(x),
+    GFF4D's nonneg PD implies bochner's full PD. -/
+lemma gff4d_to_bochner_pd {α : Type*} [AddGroup α] (φ : α → ℂ)
+    (h_nonneg : GFF4D.IsPositiveDefinite φ)
+    (h_hermitian : ∀ x : α, φ (-x) = starRingEnd ℂ (φ x)) :
+    IsPositiveDefinite φ where
+  hermitian := h_hermitian
+  nonneg := h_nonneg
 
 /-! ## Minlos Theorem
 
-Nuclear space definitions (`NuclearSpace`, `IsNuclearMap`, `schwartz_nuclear`, etc.)
-are in `OSforGFF.NuclearSpace`. -/
+The Minlos theorem is now imported from bochner's `Minlos.Main`:
+- `minlos_theorem`: existence and uniqueness (requires `IsHilbertNuclear`, `SeparableSpace`, `Nonempty`)
+- `minlos_uniqueness`: derived uniqueness result
 
-variable {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E]
-  [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-  [MeasurableSpace (WeakDual ℝ E)]
+Nuclear space types:
+- bochner uses `IsHilbertNuclear` (Gel'fand-Vilenkin: Hilbertian seminorms + HS embeddings)
+- gaussian-field uses `NuclearSpace` (Pietsch: nuclear dominance)
+- Bridge: `isHilbertNuclear_of_nuclear` in bochner's PietschBridge.lean
+-/
 
-/-- **Minlos Theorem**: Existence of infinite-dimensional probability measures.
+/-! ## MeasurableSpace bridge
 
-    Let E be a nuclear locally convex space and let Φ : E → ℂ be a characteristic functional.
-    If Φ is:
-    1. Continuous (with respect to the nuclear topology on E)
-    2. Positive definite (in the sense of Bochner)
-    3. Normalized: Φ(0) = 1
+GFF4D's `MeasurableSpace FieldConfiguration` uses `comap (fun ω f => ω f) pi`,
+while bochner uses `⨆ f, (borel ℝ).comap (eval f)`. Both are cylinder σ-algebras
+and propositionally equal, but not definitionally equal. This bridge allows converting
+between the two. -/
 
-    Then there exists a unique probability measure μ on the topological dual E'
-    (equipped with the weak* topology) such that:
-
-    Φ(f) = ∫_{E'} exp(i⟨f,ω⟩) dμ(ω)
-
-    **Applications**:
-    - For E = S(ℝᵈ) (Schwartz space), E' = S'(ℝᵈ) (tempered distributions)
-    - Gaussian measures: Φ(f) = exp(-½⟨f, Cf⟩) with nuclear covariance C
-    - Construction of the Gaussian Free Field
-
-    **Historical Note**: This theorem, proved by R.A. Minlos in 1959, is fundamental
-    to the construction of infinite-dimensional Gaussian measures in quantum field theory. -/
-axiom minlos_theorem
-  {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E]
-  [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-  [NuclearSpace E] [MeasurableSpace (WeakDual ℝ E)]
-  (Φ : E → ℂ)
-  (h_continuous : Continuous Φ)
-  (h_positive_definite : IsPositiveDefinite Φ)
-  (h_normalized : Φ 0 = 1) :
-  ∃ μ : Measure (WeakDual ℝ E), IsProbabilityMeasure μ ∧
-    (∀ f : E, Φ f = ∫ ω, Complex.exp (I * (ω f)) ∂μ)
-
-/-- **Minlos Uniqueness**: If two probability measures on the weak dual have the same
-    characteristic functional, then they are equal.
-    Note: Used locally in `measure_push_symmetry` and `gaussian_measure_symmetry`,
-    but those theorems are not in the master theorem dependency chain. -/
-axiom minlos_uniqueness
-  {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E]
-  [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-  [NuclearSpace E] [MeasurableSpace (WeakDual ℝ E)]
-  (μ₁ μ₂ : ProbabilityMeasure (WeakDual ℝ E)) :
-  (∀ f : E,
-    ∫ ω, Complex.exp (Complex.I * (ω f)) ∂μ₁.toMeasure =
-    ∫ ω, Complex.exp (Complex.I * (ω f)) ∂μ₂.toMeasure) →
-  μ₁ = μ₂
+/-- The comap-pi cylinder σ-algebra on WeakDual equals bochner's ⨆-comap definition. -/
+lemma measurableSpace_comap_eq_bochner {E : Type*} [AddCommGroup E] [Module ℝ E]
+    [TopologicalSpace E] [IsTopologicalAddGroup E] [ContinuousSMul ℝ E] :
+    MeasurableSpace.comap (fun ω : WeakDual ℝ E => fun f : E => ω f) MeasurableSpace.pi =
+    (⨆ (f : E), (borel ℝ).comap (fun l : WeakDual ℝ E => (l : E →L[ℝ] ℝ) f)) := by
+  unfold MeasurableSpace.pi
+  rw [MeasurableSpace.comap_iSup]
+  congr 1; ext φ
+  rw [MeasurableSpace.comap_comp]
 
 /-! ## Applications to Gaussian Free Fields -/
 
 /-- For Gaussian measures, the characteristic functional has the special form
     Φ(f) = exp(-½⟨f, Cf⟩) where C is a nuclear covariance operator. -/
 def gaussian_characteristic_functional
+  {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E]
   (covariance_form : E → E → ℝ) (f : E) : ℂ :=
   Complex.exp (-(1/2 : ℂ) * (covariance_form f f))
 
--- `isPositiveDefinite_precomp_linear` is now in `OSforGFF.PositiveDefinite`
+-- `GFF4D.isPositiveDefinite_precomp_linear` is in `OSforGFF.PositiveDefinite`
 
 /-- **Gaussian RBF kernel is positive definite on inner product spaces.**
 
     For an inner product space H, the function φ(h) = exp(-½‖h‖²) is positive definite.
-
-    **Proof sketch** (not yet formalized):
-    Using the inner product identity ‖x-y‖² = ‖x‖² + ‖y‖² - 2⟨x,y⟩, we get:
-      exp(-½‖x-y‖²) = exp(-½‖x‖²) · exp(-½‖y‖²) · exp(⟨x,y⟩)
-
-    The function exp(⟨x,y⟩) is positive definite because:
-    1. The inner product ⟨·,·⟩ is a positive semidefinite kernel
-    2. Exponentials of PSD kernels are PSD (via Taylor expansion and Schur product theorem)
-    3. Products of PSD kernels are PSD
-
-    **Note**: This is FALSE for general normed spaces. The Gaussian RBF exp(-‖x‖²)
-    is positive definite on V iff V embeds isometrically into a Hilbert space
-    (Schoenberg's theorem / Bretagnolle-Dacunha-Castelle-Krivine theorem).
 
     **PROVEN** in `OSforGFF/GaussianRBF.lean` using:
     - The inner product kernel is PD
@@ -143,12 +131,30 @@ def gaussian_characteristic_functional
     - Factorization: exp(-½|x-y|²) = exp(-½|x|²)·exp(-½|y|²)·exp(⟨x,y⟩) -/
 theorem gaussian_rbf_pd_innerProduct
   {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] :
-  IsPositiveDefinite (fun h : H => Complex.exp (-(1/2 : ℂ) * (‖h‖^2 : ℝ))) :=
+  GFF4D.IsPositiveDefinite (fun h : H => Complex.exp (-(1/2 : ℂ) * (‖h‖^2 : ℝ))) :=
   gaussian_rbf_pd_innerProduct_proof
+
+/-- The Gaussian RBF exp(-½‖h‖²) satisfies bochner's full PD condition
+    (hermitian + nonneg) on inner product spaces.
+
+    Hermiticity: exp(-½‖-h‖²) = exp(-½‖h‖²) (since ‖-h‖ = ‖h‖),
+    and conj(exp(-½‖h‖²)) = exp(-½‖h‖²) (since the exponent is real). -/
+theorem gaussian_rbf_pd_bochner
+  {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] :
+  IsPositiveDefinite (fun h : H => Complex.exp (-(1/2 : ℂ) * (‖h‖^2 : ℝ))) := by
+  apply gff4d_to_bochner_pd
+  · exact gaussian_rbf_pd_innerProduct_proof
+  · intro h
+    rw [norm_neg, ← Complex.exp_conj]
+    congr 1
+    -- Rewrite the argument as a single real cast, then conj_ofReal
+    have : (-(1/2 : ℂ) * (‖h‖^2 : ℝ)) = ((-(1/2 : ℝ) * ‖h‖^2 : ℝ) : ℂ) := by
+      push_cast; ring
+    rw [this, Complex.conj_ofReal]
 
 /-- If covariance is realized as a squared norm via a linear embedding T into
     a real inner product space H, then the Gaussian characteristic functional
-    is positive definite.
+    is positive definite (in GFF4D's nonneg sense).
 
     **Note**: We require H to be an inner product space (not just normed space)
     because the Gaussian RBF kernel is only guaranteed positive definite for
@@ -159,7 +165,7 @@ lemma gaussian_positive_definite_via_embedding
   (T : E →ₗ[ℝ] H)
   (covariance_form : E → E → ℝ)
   (h_eq : ∀ f, covariance_form f f = (‖T f‖^2 : ℝ)) :
-  IsPositiveDefinite (fun f => Complex.exp (-(1/2 : ℂ) * (covariance_form f f))) := by
+  GFF4D.IsPositiveDefinite (fun f => Complex.exp (-(1/2 : ℂ) * (covariance_form f f))) := by
   -- Reduce to Gaussian RBF on H and precomposed with T
   have hPD_H := gaussian_rbf_pd_innerProduct (H := H)
   -- Compose with T and rewrite using h_eq
@@ -177,7 +183,7 @@ lemma gaussian_positive_definite_via_embedding
     0 ≤ (∑ i, ∑ j,
       (starRingEnd ℂ) (c i) * c j *
         Complex.exp (-(1/2 : ℂ) * ((‖T (x i) - T (x j)‖^2 : ℝ)))).re := by
-    simpa using (isPositiveDefinite_precomp_linear
+    simpa using (GFF4D.isPositiveDefinite_precomp_linear
       (ψ := fun h : H => Complex.exp (-(1/2 : ℂ) * (‖h‖^2 : ℝ))) hPD_H T) m x c
   -- Rewrite differences inside T using linearity
   have hPD_comp1 :
@@ -191,6 +197,27 @@ lemma gaussian_positive_definite_via_embedding
     simpa [repl] using hPD_comp1
   exact this
 
+/-- The Gaussian CF satisfies bochner's full PD condition when covariance
+    is realized via a linear embedding into a Hilbert space.
+    This is the version needed by bochner's `minlos_theorem`. -/
+lemma gaussian_positive_definite_bochner
+  {E H : Type*} [AddCommGroup E] [Module ℝ E]
+  [NormedAddCommGroup H] [InnerProductSpace ℝ H]
+  (T : E →ₗ[ℝ] H)
+  (covariance_form : E → E → ℝ)
+  (h_eq : ∀ f, covariance_form f f = (‖T f‖^2 : ℝ))
+  (h_symm_covar : ∀ f, covariance_form (-f) (-f) = covariance_form f f) :
+  IsPositiveDefinite (fun f => Complex.exp (-(1/2 : ℂ) * (covariance_form f f))) := by
+  apply gff4d_to_bochner_pd
+  · exact gaussian_positive_definite_via_embedding T covariance_form h_eq
+  · intro x
+    simp only [h_symm_covar]
+    rw [← Complex.exp_conj]
+    congr 1
+    have : (-(1/2 : ℂ) * (covariance_form x x : ℂ)) = ((-(1/2 : ℝ) * covariance_form x x : ℝ) : ℂ) := by
+      push_cast; ring
+    rw [this, Complex.conj_ofReal]
+
 /-- Application of Minlos theorem to Gaussian measures.
     If the covariance form can be realized as a squared norm via a linear embedding T into
     a real inner product space H, then the Gaussian characteristic functional Φ(f) = exp(-½⟨f, Cf⟩)
@@ -201,7 +228,8 @@ lemma gaussian_positive_definite_via_embedding
 theorem minlos_gaussian_construction
   {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E]
   [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-  [NuclearSpace E] [MeasurableSpace (WeakDual ℝ E)]
+  [IsHilbertNuclear E] [TopologicalSpace.SeparableSpace E] [Nonempty E]
+
   {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H]
   (T : E →ₗ[ℝ] H)
   (covariance_form : E → E → ℝ)
@@ -212,36 +240,41 @@ theorem minlos_gaussian_construction
   : ∃ μ : Measure (WeakDual ℝ E), IsProbabilityMeasure μ ∧
     (∀ f : E, gaussian_characteristic_functional covariance_form f =
               ∫ ω, Complex.exp (I * (ω f)) ∂μ) := by
-  -- Apply Minlos theorem to the Gaussian characteristic functional
-  apply minlos_theorem (gaussian_characteristic_functional covariance_form)
-  -- 1. Continuity: composition of continuous maps
-  · have h_covar_continuous : Continuous (fun f => (covariance_form f f : ℂ)) := by
-      exact Continuous.comp continuous_ofReal h_continuous
-    have h_scaled_continuous : Continuous (fun f => -(1/2 : ℂ) * (covariance_form f f : ℂ)) := by
-      apply Continuous.mul
-      · exact continuous_const
-      · exact h_covar_continuous
+  -- Build bochner's PD from the embedding
+  have h_pd : IsPositiveDefinite (gaussian_characteristic_functional covariance_form) := by
+    apply gff4d_to_bochner_pd
+    · exact gaussian_positive_definite_via_embedding T covariance_form h_eq
+    · intro x
+      simp only [gaussian_characteristic_functional]
+      -- covariance_form (-x) (-x) = ‖T(-x)‖² = ‖-(Tx)‖² = ‖Tx‖² = covariance_form x x
+      have h_neg : covariance_form (-x) (-x) = covariance_form x x := by
+        rw [h_eq, h_eq, map_neg, norm_neg]
+      simp only [h_neg]
+      rw [← Complex.exp_conj]
+      congr 1
+      have : (-(1/2 : ℂ) * (covariance_form x x : ℂ)) = ((-(1/2 : ℝ) * covariance_form x x : ℝ) : ℂ) := by
+        push_cast; ring
+      rw [this, Complex.conj_ofReal]
+  -- Apply bochner's Minlos theorem
+  have h_cont : Continuous (gaussian_characteristic_functional covariance_form) := by
+    have h_covar_continuous : Continuous (fun f => (covariance_form f f : ℂ)) :=
+      Continuous.comp continuous_ofReal h_continuous
+    have h_scaled_continuous : Continuous (fun f => -(1/2 : ℂ) * (covariance_form f f : ℂ)) :=
+      Continuous.mul continuous_const h_covar_continuous
     exact Continuous.comp continuous_exp h_scaled_continuous
-  -- 2. Positive definiteness via embedding
-  · exact gaussian_positive_definite_via_embedding T covariance_form h_eq
-  -- 3. Normalization at 0
-  · simp [gaussian_characteristic_functional, h_zero]
+  have h_norm : gaussian_characteristic_functional covariance_form 0 = 1 := by
+    simp [gaussian_characteristic_functional, h_zero]
+  obtain ⟨μ, hμ⟩ := (minlos_theorem
+    (gaussian_characteristic_functional covariance_form) h_cont h_pd h_norm).exists
+  exact ⟨μ.toMeasure, μ.property, hμ⟩
 
 /-- The measure constructed by Minlos theorem for a Gaussian characteristic functional
-    indeed has that functional as its characteristic function.
-
-    This theorem makes explicit that the Gaussian measure μ constructed via Minlos
-    satisfies: for any test function f,
-    ∫ ω, exp(i⟨f,ω⟩) dμ(ω) = exp(-½⟨f,Cf⟩)
-
-    This is the fundamental property connecting the abstract Minlos construction
-    to the concrete Gaussian generating functional used in quantum field theory.
-
-    **Note**: Requires H to be an inner product space for the Gaussian RBF positivity. -/
+    indeed has that functional as its characteristic function. -/
 theorem gaussian_measure_characteristic_functional
   {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E]
   [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-  [NuclearSpace E] [MeasurableSpace (WeakDual ℝ E)]
+  [IsHilbertNuclear E] [TopologicalSpace.SeparableSpace E] [Nonempty E]
+
   {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H]
   (T : E →ₗ[ℝ] H)
   (covariance_form : E → E → ℝ)
@@ -278,13 +311,18 @@ and by uniqueness the measure is Euclidean-invariant. -/
 theorem gaussian_measure_symmetry
   {E : Type*} [AddCommGroup E] [Module ℝ E] [TopologicalSpace E]
   [IsTopologicalAddGroup E] [ContinuousSMul ℝ E]
-  [NuclearSpace E] [MeasurableSpace (WeakDual ℝ E)]
+  [IsHilbertNuclear E] [TopologicalSpace.SeparableSpace E] [Nonempty E]
+
   (covariance_form : E → E → ℝ)
   (μ : ProbabilityMeasure (WeakDual ℝ E))
   (h_char : ∀ f : E, ∫ ω, Complex.exp (I * (ω f)) ∂μ.toMeasure =
                      gaussian_characteristic_functional covariance_form f)
   (g : E →L[ℝ] E)
   (h_covar_symm : ∀ f : E, covariance_form (g f) (g f) = covariance_form f f)
+  -- Properties needed for Minlos uniqueness (Gaussian CF is continuous, PD, normalized)
+  (h_cf_cont : Continuous (gaussian_characteristic_functional covariance_form))
+  (h_cf_pd : IsPositiveDefinite (gaussian_characteristic_functional covariance_form))
+  (h_cf_norm : gaussian_characteristic_functional covariance_form 0 = 1)
   -- The pushforward measure under the dual action
   (μ_push : ProbabilityMeasure (WeakDual ℝ E))
   (h_push_char : ∀ f : E, ∫ ω, Complex.exp (I * (ω f)) ∂μ_push.toMeasure =
@@ -295,9 +333,9 @@ theorem gaussian_measure_symmetry
                        gaussian_characteristic_functional covariance_form f := by
     intro f
     simp only [gaussian_characteristic_functional, h_covar_symm]
-  -- Apply uniqueness
-  apply minlos_uniqueness μ_push μ
-  intro f
-  rw [h_push_char, h_char, h_Φ_symm, h_char]
+  -- Apply bochner's minlos_uniqueness with the Gaussian CF as Φ
+  exact minlos_uniqueness h_cf_cont h_cf_pd h_cf_norm
+    (fun f => (h_push_char f).trans ((h_char (g f)).trans (h_Φ_symm f)))
+    h_char
 
 end

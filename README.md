@@ -23,7 +23,9 @@ theorem gaussianFreeField_satisfies_all_OS_axioms (m : ℝ) [Fact (0 < m)] :
 [gaussian-field](https://github.com/mrdouglasny/gaussian-field) library (~2,500 lines) for the generic
 Gaussian measure construction.
 
-## Dependency: gaussian-field
+## Dependencies
+
+### gaussian-field
 
 The GFF measure is constructed using the
 [gaussian-field](https://github.com/mrdouglasny/gaussian-field) library
@@ -43,6 +45,22 @@ The bridge file [GaussianFieldBridge](OSforGFF/GaussianFieldBridge.lean) connect
 the aqft2 covariance operator `embeddingMapCLM m : TestFunction →L[ℝ] L²(ℝ⁴,ℂ)`
 to gaussian-field's generic construction, proving
 `@inner ℝ _ _ (T f) (T g) = freeCovarianceFormR m f g`.
+
+### BochnerMinlos
+
+The [bochner](../bochner) library (local path dependency) provides fully proven
+versions of the Bochner and Minlos theorems for nuclear spaces, with 0 sorries
+and 0 custom axioms. This project imports:
+- **`minlos_theorem`** — existence of a probability measure on the dual of a
+  nuclear space with a given continuous positive-definite characteristic functional
+- **`minlos_uniqueness`** — uniqueness of such a measure
+- **`IsPositiveDefinite`** — hermitian + nonneg-definite structure for characteristic functionals
+- **`IsHilbertNuclear`** — Gel'fand-Vilenkin nuclearity (Hilbertian seminorms + HS embeddings)
+
+These replace the former `minlos_theorem` and `minlos_uniqueness` axioms that were
+in `OSforGFF/Minlos.lean`. Bridge lemmas in that file handle the type class
+differences between GFF4D (`NuclearSpace`, comap-pi MeasurableSpace) and bochner
+(`IsHilbertNuclear`, ⨆-comap MeasurableSpace).
 
 ## Project Structure
 
@@ -161,8 +179,8 @@ identity theorem.
 | File | Contents |
 |------|----------|
 | [NuclearSpace](OSforGFF/NuclearSpace.lean) | Nuclear operator/space definitions (standalone, not used by master chain) |
-| [Minlos](OSforGFF/Minlos.lean) | Bochner's theorem, Minlos theorem (axiom), measure existence |
-| [MinlosAnalytic](OSforGFF/MinlosAnalytic.lean) | Entire extension of characteristic functional to complexification |
+| [Minlos](OSforGFF/Minlos.lean) | Bridge to bochner library: proven Minlos theorem + uniqueness, Gaussian PD lemmas |
+| [MinlosAnalytic](OSforGFF/MinlosAnalytic.lean) | Zero mean from symmetry, integral sign-flip invariance via Minlos uniqueness |
 
 ---
 

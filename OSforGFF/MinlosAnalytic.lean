@@ -37,7 +37,13 @@ We keep some parts as stubs (sorry) pending detailed functional-analytic develop
 -/
 
 open Classical
-open TopologicalSpace MeasureTheory Complex Filter GaussianField
+open TopologicalSpace MeasureTheory Complex Filter
+
+-- Use bochner's MeasurableSpace instance on FieldConfiguration (= WeakDual ℝ TestFunction)
+-- in this file, so that minlos_uniqueness can be applied directly.
+-- Basic.lean's comap-pi instance is propositionally equal (see measurableSpace_comap_eq_bochner)
+-- but not definitionally equal, causing type mismatches with bochner's theorems.
+attribute [-instance] instMeasurableSpaceFieldConfiguration
 
 /-! ## Contents
 
@@ -77,19 +83,32 @@ def negMap : FieldConfiguration → FieldConfiguration := fun ω => -ω
 
 /-- The negation map is measurable -/
 lemma negMap_measurable : Measurable negMap := by
-  apply fieldConfiguration_measurable_of_eval_measurable
-  intro φ
-  -- negMap ω φ = (-ω) φ = -(ω φ), so measurable_neg ∘ eval
-  exact measurable_neg.comp (fieldConfiguration_eval_measurable φ)
+  -- With bochner's instance (⨆ φ, (borel ℝ).comap (eval φ)), negMap is measurable
+  -- because each evaluation (-ω)(φ) = -(ω(φ)) is measurable
+  apply measurable_iff_comap_le.mpr
+  show (⨆ (φ : TestFunction), (borel ℝ).comap
+    (fun l : FieldConfiguration => (l : TestFunction →L[ℝ] ℝ) φ)).comap negMap ≤ _
+  rw [MeasurableSpace.comap_iSup]
+  exact iSup_le fun φ =>
+    (le_of_eq MeasurableSpace.comap_comp).trans
+      (measurable_neg.comp (WeakDual.eval_measurable φ)).comap_le
 
 /-- Symmetry under global sign flip induced by the real Gaussian CF.
-    Note: Requires NuclearSpace instance for Minlos uniqueness theorem. -/
+    Uses bochner's `minlos_uniqueness` (proven, not axiomatic) to conclude
+    that the pushforward under negation equals the original measure.
+
+    The Gaussian CF's bochner-PD property (hermitian + nonneg) is taken as a
+    hypothesis. Hermiticity follows from bilinearity of Q; nonneg-PD follows
+    from the GNS construction or from the CF being an actual characteristic
+    functional (∑∑ c̄ᵢcⱼ ∫ exp(iω(xᵢ-xⱼ)) = ∫ |∑ cᵢ exp(iωxᵢ)|² ≥ 0). -/
 lemma integral_neg_invariance
-  [NuclearSpace TestFunction]
+  [IsHilbertNuclear TestFunction] [SeparableSpace TestFunction] [Nonempty TestFunction]
   (C : CovarianceForm) (μ : ProbabilityMeasure FieldConfiguration)
   (h_realCF : ∀ f : TestFunction,
      ∫ ω, Complex.exp (Complex.I * (ω f)) ∂μ.toMeasure
-       = Complex.exp (-(1/2 : ℂ) * (C.Q f f))) :
+       = Complex.exp (-(1/2 : ℂ) * (C.Q f f)))
+  (h_cf_pd : IsPositiveDefinite
+    (fun f : TestFunction => Complex.exp (-(1/2 : ℂ) * (C.Q f f : ℂ)))) :
   ∀ (f : FieldConfiguration → ℂ), Integrable f μ.toMeasure →
     ∫ ω, f ω ∂μ.toMeasure = ∫ ω, f (-ω) ∂μ.toMeasure := by
   intro f hInt
@@ -114,7 +133,7 @@ lemma integral_neg_invariance
     have h_aestrongly_measurable : AEStronglyMeasurable (fun ω => Complex.exp (Complex.I * (distributionPairing ω g))) μneg := by
       -- Inner map: ω ↦ distributionPairing ω g is measurable via continuous linear map
       have h_inner_meas : Measurable (fun ω : FieldConfiguration => distributionPairing ω g) :=
-        fieldConfiguration_eval_measurable g
+        WeakDual.eval_measurable g
       -- Outer map: x ↦ exp(I * x) is continuous hence measurable
       have h_cont_mulI : Continuous (fun x : ℝ => (Complex.I : ℂ) * (x : ℂ)) :=
         continuous_const.mul continuous_ofReal
@@ -172,28 +191,34 @@ lemma integral_neg_invariance
       exact Complex.exp_ofReal_im (-(1/2) * C.Q g g)
     rw [Complex.conj_eq_iff_im.mpr h_CF_is_real]
 
-  -- Step 3: Apply uniqueness of measures (Minlos theorem from Minlos.lean)
+  -- Step 3: Apply uniqueness of measures (bochner's minlos_uniqueness)
   -- Two probability measures with the same characteristic functional are equal.
-  -- We wrap μneg as a ProbabilityMeasure and apply minlos_uniqueness.
   let μneg_prob : ProbabilityMeasure FieldConfiguration := ⟨μneg, hμneg_prob⟩
+  -- Define the Gaussian CF as Φ and prove its properties
+  let Φ : TestFunction → ℂ := fun f => Complex.exp (-(1/2 : ℂ) * (C.Q f f : ℂ))
+  have h_cf_cont : Continuous Φ := by
+    apply Continuous.comp continuous_exp
+    apply Continuous.mul continuous_const
+    exact Continuous.comp continuous_ofReal C.cont_diag
+  have h_cf_norm : Φ 0 = 1 := by
+    show Complex.exp (-(1/2 : ℂ) * (C.Q 0 0 : ℂ)) = 1
+    have : C.Q 0 0 = 0 := by
+      have h := C.smul_left 0 0 0; simp at h; linarith [C.psd 0, h]
+    simp [this]
   have hμeq_prob : μneg_prob = μ := by
-    apply minlos_uniqueness μneg_prob μ
-    intro g
-    -- Use hCF_equal with distributionPairing unfolded
-    simp only [distributionPairing] at hCF_equal
-    exact hCF_equal g
+    apply minlos_uniqueness (Φ := Φ) h_cf_cont h_cf_pd h_cf_norm
+    · intro g
+      exact (hCF_equal g).trans (h_realCF g)
+    · intro g
+      exact h_realCF g
   have hμeq : μneg = μ.toMeasure := by
     have h := congrArg ProbabilityMeasure.toMeasure hμeq_prob
     exact h
 
   -- Step 4: Use the equality of measures to get the integral identity
-  -- Since μneg = μ.toMeasure, we can use change of variables on the original measure
   have hf_aestrongly_measurable : AEStronglyMeasurable f μneg := by
-    -- Since μneg = μ.toMeasure, AEStronglyMeasurable on μneg is the same as on μ.toMeasure
     rw [hμeq]
     exact hInt.aestronglyMeasurable
-  -- The change of variables formula gives us:
-  -- ∫ f dμ = ∫ f d(μ.map negMap⁻¹) = ∫ (f ∘ negMap) dμ = ∫ f(-ω) dμ
   have h_cov : ∫ ω, f ω ∂μneg = ∫ ω, f (negMap ω) ∂μ.toMeasure := by
     exact integral_map (Measurable.aemeasurable negMap_measurable) hf_aestrongly_measurable
   rw [hμeq] at h_cov
@@ -202,17 +227,19 @@ lemma integral_neg_invariance
 
 /-- Zero mean from the real Gaussian characteristic functional, via symmetry and L¹. -/
 lemma moment_zero_from_realCF
-  [NuclearSpace TestFunction]
+  [IsHilbertNuclear TestFunction] [SeparableSpace TestFunction] [Nonempty TestFunction]
   (C : CovarianceForm) (μ : ProbabilityMeasure FieldConfiguration)
   (h_realCF : ∀ f : TestFunction,
      ∫ ω, Complex.exp (Complex.I * (ω f)) ∂μ.toMeasure
        = Complex.exp (-(1/2 : ℂ) * (C.Q f f)))
+  (h_cf_pd : IsPositiveDefinite
+    (fun f : TestFunction => Complex.exp (-(1/2 : ℂ) * (C.Q f f : ℂ))))
   (a : TestFunction)
   (hInt1 : Integrable (fun ω => (ω a : ℂ)) μ.toMeasure) :
   ∫ ω, (ω a : ℂ) ∂μ.toMeasure = 0 := by
   classical
   -- Symmetry: ∫ f(ω) = ∫ f(-ω)
-  have hInv := integral_neg_invariance C μ h_realCF (fun ω => (ω a : ℂ)) hInt1
+  have hInv := integral_neg_invariance C μ h_realCF h_cf_pd (fun ω => (ω a : ℂ)) hInt1
   -- Flip integrand: ((-ω) a : ℂ) = - (ω a : ℂ)
   have hflip : (fun ω : FieldConfiguration => ((-ω) a : ℂ)) = (fun ω => - (ω a : ℂ)) := by
     funext ω

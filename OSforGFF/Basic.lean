@@ -171,7 +171,11 @@ abbrev FieldConfiguration := WeakDual ℝ (SchwartzMap SpaceTime ℝ)
 -- This is the standard choice for measures on duals of nuclear spaces (Gel'fand-Vilenkin,
 -- Bogachev §7.14). For separable E, it equals the Borel σ-algebra of the weak-* topology,
 -- but the cylindrical definition avoids needing to prove that equivalence.
-instance : MeasurableSpace FieldConfiguration :=
+--
+-- Note: This instance is definitionally equal to GaussianField.instMeasurableSpaceConfiguration
+-- (both use comap-pi). Bochner's Minlos.NuclearSpace uses a propositionally equal but
+-- definitionally different ⨆-based definition; the bridge is in OSforGFF/Minlos.lean.
+instance instMeasurableSpaceFieldConfiguration : MeasurableSpace FieldConfiguration :=
   MeasurableSpace.comap (fun ω : FieldConfiguration => fun φ : TestFunction => ω φ)
     MeasurableSpace.pi
 

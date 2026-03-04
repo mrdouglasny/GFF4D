@@ -16,7 +16,7 @@ import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Matrix.Mul
 import OSforGFF.HadamardExp
 
-open Complex BigOperators Real InnerProductSpace Matrix
+open Complex BigOperators Real InnerProductSpace Matrix GFF4D
 
 variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H]
 

@@ -138,8 +138,9 @@ and its properties.
 
 Construction of the GFF probability measure on tempered distributions,
 using the Minlos theorem (from the bochner library) with the Gaussian
-characteristic functional and one axiom: `schwartz_isHilbertNuclear`
-(Schwartz space is nuclear). The Gaussian pushforward property is proved
+characteristic functional and two axioms: `schwartz_isHilbertNuclear`
+(Schwartz space is Hilbert-nuclear) and `schwartz_separableSpace`
+(Schwartz space is separable). The Gaussian pushforward property is proved
 from the characteristic functional via Lévy's uniqueness theorem.
 
 | File | Contents |

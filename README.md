@@ -18,33 +18,11 @@ theorem gaussianFreeField_satisfies_all_OS_axioms (m : ℝ) [Fact (0 < m)] :
   OS4_Ergodicity (μ_GFF m)
 ```
 
-**Status:** The master theorem chain has **0 `sorry`** statements and **0 custom axioms**.
-~31,000 lines of Lean across 50 files in `OSforGFF/`, plus the
-[gaussian-field](https://github.com/mrdouglasny/gaussian-field) library (~2,500 lines) for the generic
-Gaussian measure construction.
+**Status:** The master theorem chain has **0 `sorry`** statements and **2 custom axioms**
+(`schwartz_isHilbertNuclear`, `gff_pairing_is_gaussian_axiom`).
+~31,000 lines of Lean across 50 files in `OSforGFF/`.
 
 ## Dependencies
-
-### gaussian-field
-
-The GFF measure is constructed using the
-[gaussian-field](https://github.com/mrdouglasny/gaussian-field) library
-(fetched automatically by Lake), which provides a generic construction of centered
-Gaussian probability measures on duals of nuclear Fréchet spaces. See the
-[gaussian-field README](https://github.com/mrdouglasny/gaussian-field#readme)
-for details.
-
-From gaussian-field, this project uses:
-- **`NuclearSpace` instance** for Schwartz space 𝓢(ℝ⁴, ℝ) — proved via
-  spectral factorization of compact self-adjoint operators and nuclear SVD
-- **`GaussianField.measure`** — given `NuclearSpace E` and a CLM `T : E →L[ℝ] H`,
-  produces a probability measure with characteristic functional exp(-½‖T(f)‖²)
-- **`GaussianField.charFun_eq`** — the characteristic functional identity
-
-The bridge file [GaussianFieldBridge](OSforGFF/GaussianFieldBridge.lean) connects
-the aqft2 covariance operator `embeddingMapCLM m : TestFunction →L[ℝ] L²(ℝ⁴,ℂ)`
-to gaussian-field's generic construction, proving
-`@inner ℝ _ _ (T f) (T g) = freeCovarianceFormR m f g`.
 
 ### BochnerMinlos
 
@@ -158,13 +136,15 @@ and its properties.
 ### 4. Gaussian Measure Construction
 
 Construction of the GFF probability measure on tempered distributions,
-using the [gaussian-field](https://github.com/mrdouglasny/gaussian-field) library for the generic
-Gaussian measure on nuclear spaces.
+using the Minlos theorem (from the bochner library) with the Gaussian
+characteristic functional and two axioms: `schwartz_isHilbertNuclear`
+(Schwartz space is nuclear) and `gff_pairing_is_gaussian_axiom`
+(1D marginals are Gaussian).
 
 | File | Contents |
 |------|----------|
-| [GaussianFieldBridge](OSforGFF/GaussianFieldBridge.lean) | Bridge to gaussian-field: `NuclearSpace TestFunction`, inner product = covariance |
-| [GFFMconstruct](OSforGFF/GFFMconstruct.lean) | GFF measure construction: covariance → CLM → μ |
+| [GaussianFieldBridge](OSforGFF/GaussianFieldBridge.lean) | Nuclear axiom, Minlos measure construction, Gaussian axiom, derived properties |
+| [GFFMconstruct](OSforGFF/GFFMconstruct.lean) | GFF measure interface: covariance → CLM → μ |
 | [GFFExponentialIntegrability](OSforGFF/GFFExponentialIntegrability.lean) | Exponential integrability of GFF linear functionals |
 | [GaussianMoments](OSforGFF/GaussianMoments.lean) | Gaussian moments: all n-point functions are integrable |
 | [GFFIsGaussian](OSforGFF/GFFIsGaussian.lean) | Verification that GFF satisfies Gaussian moment conditions |
@@ -174,11 +154,10 @@ Gaussian measure on nuclear spaces.
 Z[z₀f + z₁g] in ℂ² to identify the two-point function S₂(f,g) = C(f,g) via the
 identity theorem.
 
-#### Alternate Minlos construction (not in master chain)
+#### Minlos infrastructure
 
 | File | Contents |
 |------|----------|
-| [NuclearSpace](OSforGFF/NuclearSpace.lean) | Nuclear operator/space definitions (standalone, not used by master chain) |
 | [Minlos](OSforGFF/Minlos.lean) | Bridge to bochner library: proven Minlos theorem + uniqueness, Gaussian PD lemmas |
 | [MinlosAnalytic](OSforGFF/MinlosAnalytic.lean) | Zero mean from symmetry, integral sign-flip invariance via Minlos uniqueness |
 

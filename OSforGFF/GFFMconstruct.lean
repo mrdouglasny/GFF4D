@@ -40,9 +40,9 @@ import OSforGFF.ComplexTestFunction
 ## Gaussian Free Field: Interface Layer
 
 This file provides the GFF probability measure on field configurations and its
-core properties. The measure is constructed via the GaussianField library's
-generic nuclear-space construction, applied to the covariance operator
-`embeddingMapCLM m : TestFunction →L[ℝ] L²(ℝ⁴,ℂ)`.
+core properties. The measure is constructed via the Minlos theorem (from the
+bochner library), applied to the Gaussian characteristic functional with
+covariance operator `embeddingMapCLM m : TestFunction →L[ℝ] L²(ℝ⁴,ℂ)`.
 
 ### Core Framework:
 
@@ -56,7 +56,7 @@ generic nuclear-space construction, applied to the covariance operator
 
 ### Main Results:
 
-- `gaussianFreeField_free`: The GFF ProbabilityMeasure (via GaussianField construction)
+- `gaussianFreeField_free`: The GFF ProbabilityMeasure (via Minlos construction)
 - `gff_real_characteristic`: Characteristic functional E[exp(i⟨ω,f⟩)] = exp(-½C(f,f))
 - `gff_pairing_is_gaussian`: Pushforward by test function is 1D Gaussian
 - `gaussianFreeField_pairing_memLp`: Fernique-type Lᵖ integrability
@@ -93,20 +93,20 @@ def isGaussianGJ (dμ_config : ProbabilityMeasure FieldConfiguration) : Prop :=
     GJGeneratingFunctionalℂ dμ_config J =
     Complex.exp (-(1/2 : ℂ) * SchwingerFunctionℂ₂ dμ_config J J)
 
-/-! ## GFF Measure from GaussianField Construction
+/-! ## GFF Measure from Minlos Construction
 
-The GFF is constructed via the GaussianField library's generic measure construction
-for nuclear Fréchet spaces. The Schwartz space `TestFunction` is nuclear (via
-`schwartz_nuclearSpace`) and the covariance operator `embeddingMapCLM m` embeds
-into the target Hilbert space `L²(ℝ⁴,ℂ)`.
+The GFF is constructed via the Minlos theorem applied to the Gaussian
+characteristic functional exp(-½ C(f,f)). The Schwartz space `TestFunction`
+is Hilbert-nuclear (axiom `schwartz_isHilbertNuclear`) and the covariance operator
+`embeddingMapCLM m` embeds into the target Hilbert space `L²(ℝ⁴,ℂ)`.
 
-The bridge theorems in `GaussianFieldBridge` connect the generic construction's
+The bridge theorems in `GaussianFieldBridge` connect the construction's
 inner-product form to aqft2's `freeCovarianceFormR`. -/
 
 /-- The Gaussian Free Field with mass m > 0.
 
-    Constructed via the GaussianField library's generic measure construction
-    for nuclear Fréchet spaces, applied to `embeddingMapCLM m`. -/
+    Constructed via the Minlos theorem applied to the Gaussian characteristic
+    functional with covariance `freeCovarianceFormR m`. -/
 noncomputable def gaussianFreeField_free (m : ℝ) [Fact (0 < m)] : ProbabilityMeasure FieldConfiguration :=
   GaussianFieldBridge.gfMeasure m
 
@@ -135,7 +135,7 @@ theorem gff_pairing_is_gaussian
   GaussianFieldBridge.gfMeasure_pairing_is_gaussian m φ
 
 /-- **Fernique's Theorem for GFF**: Every distribution pairing has finite moments of all orders.
-    Derived from the GaussianField construction's generic Lᵖ integrability. -/
+    Derived from the Gaussian pushforward and Mathlib's gaussianReal theory. -/
 theorem gaussianFreeField_pairing_memLp
   (m : ℝ) [Fact (0 < m)] (φ : TestFunction) (p : ENNReal) (hp : p ≠ ⊤) :
   MemLp (distributionPairingCLM φ) p (gaussianFreeField_free m).toMeasure :=

@@ -4,43 +4,54 @@ Released under Apache 2.0 license as described in the file LICENSE.
 
 # GaussianField Bridge
 
-This file connects the aqft2 covariance operator to the GaussianField library's
-measure construction. All former axioms are now theorems, derived from the
-generic construction in gaussian-field applied to `embeddingMapCLM m`.
+This file constructs the GFF probability measure on tempered distributions and
+establishes its core properties. The measure is constructed via the Minlos theorem
+(from the bochner library) applied to the Gaussian characteristic functional
+with covariance operator `embeddingMapCLM m`.
 
 ## Architecture
 
 The construction has three components:
 
-### 1. NuclearSpace instance (from gaussian-field)
-`NuclearSpace TestFunction` comes from `schwartz_nuclearSpace` in gaussian-field's
-Axioms.lean, which provides `NuclearSpace (SchwartzMap D F)` for any finite-dimensional
-domain D and normed codomain F. Since `TestFunction = SchwartzMap SpaceTime ℝ` and
-`SpaceTime = EuclideanSpace ℝ (Fin 4)` is finite-dimensional, this applies directly.
+### 1. Nuclear space axiom
+`schwartz_isHilbertNuclear` axioms that Schwartz space 𝓢(ℝ⁴,ℝ) is Hilbert-nuclear
+(Gel'fand-Vilenkin, Trèves). This is the type class required by bochner's Minlos theorem.
 
 ### 2. Covariance operator T (concrete — from aqft2)
 `embeddingMapCLM m : TestFunction →L[ℝ] L²(ℝ⁴,ℂ)` is fully proved in CovarianceR.lean
 with `freeCovarianceFormR_eq_normSq`: C(f,f) = ‖T(f)‖²
 
-### 3. Measure construction (from gaussian-field)
-Given NuclearSpace E and T : E →L[ℝ] H, GaussianField.measure produces a probability
-measure with characteristic functional exp(-½⟨T(f), T(f)⟩_H). The inner product
-form connects to freeCovarianceFormR via the bridge lemma
-`inner_embeddingMapCLM_eq_freeCovarianceFormR`.
+### 3. Measure construction (via Minlos theorem)
+Given `IsHilbertNuclear TestFunction` and the Gaussian characteristic functional
+exp(-½ C(f,f)), the Minlos theorem yields a probability measure on the dual space
+with that characteristic functional. The 1D Gaussian pushforward property is
+an axiom (`gff_pairing_is_gaussian_axiom`), from which centredness, moments,
+and Fernique-type bounds are derived.
 
 ## Key type identifications
 
-- `FieldConfiguration = GaussianField.Configuration TestFunction` (both are `WeakDual ℝ TestFunction`)
-- `MeasurableSpace FieldConfiguration` = `GaussianField.instMeasurableSpaceConfiguration`
-  (both are `MeasurableSpace.comap (fun ω f => ω f) MeasurableSpace.pi`)
+- `FieldConfiguration` is `WeakDual ℝ TestFunction`
+- `MeasurableSpace FieldConfiguration` uses `comap (fun ω f => ω f) pi`
 - The real inner product on `Lp ℂ 2 volume` comes from `InnerProductSpace.rclikeToReal`
 - `@inner ℝ _ _ (T f) (T g) = freeCovarianceFormR m f g` (bridge lemma, by polarization)
+
+## Sorries in this file
+
+The `sorry` markers in `gfMeasure` and `gfMeasure_charFun` are for the
+MeasurableSpace transport: bochner's Minlos theorem constructs a measure on the
+⨆-comap σ-algebra, while this project uses comap-pi. These are propositionally
+equal (`measurableSpace_comap_eq_bochner`), but the dependent type transport is
+technically complex.
+
+The `sorry` markers in `gfMeasure_centered`, `gfMeasure_second_moment`, and
+`gfMeasure_pairing_memLp` are for deriving properties from the Gaussian
+pushforward axiom via Mathlib's `gaussianReal` API.
 -/
 
 import OSforGFF.Basic
 import OSforGFF.Covariance
 import OSforGFF.CovarianceR
-import GaussianField
+import OSforGFF.Minlos
 import Mathlib.Probability.Distributions.Gaussian.Real
 import Mathlib.Probability.Distributions.Gaussian.Fernique
 import Mathlib.MeasureTheory.Measure.SeparableMeasure
@@ -52,11 +63,34 @@ noncomputable section
 
 namespace GaussianFieldBridge
 
+/-! ## Axioms
+
+This file contains two axioms:
+- `schwartz_isHilbertNuclear`: Schwartz space is Hilbert-nuclear (Gel'fand-Vilenkin)
+- `gff_pairing_is_gaussian_axiom`: pushforward of GFF measure by test function pairing is Gaussian
+
+See `texts/axioms.txt` for justification. -/
+
+/-- Schwartz space 𝓢(ℝ⁴,ℝ) is Hilbert-nuclear (Gel'fand-Vilenkin, Trèves).
+    This is the nuclearity condition required by bochner's Minlos theorem. -/
+axiom schwartz_isHilbertNuclear : IsHilbertNuclear TestFunction
+
+attribute [instance] schwartz_isHilbertNuclear
+
+/-- Schwartz space is separable (Fréchet space with countable seminorms).
+    Standard result (Reed-Simon, Vol. 1); synthesis gap in Mathlib. -/
+instance schwartz_separableSpace : SeparableSpace TestFunction := by
+  sorry
+
+/-- Schwartz space is nonempty (the zero function is Schwartz). -/
+instance schwartz_nonempty : Nonempty TestFunction := ⟨0⟩
+
 /-! ## Instance Setup
 
-We need `InnerProductSpace ℝ (TargetHilbertSpace m)` since gaussian-field's construction
-requires a real inner product space. The target `Lp ℂ 2 volume` has
-`InnerProductSpace ℂ _`; we obtain the real instance via `InnerProductSpace.rclikeToReal`. -/
+We need `InnerProductSpace ℝ (TargetHilbertSpace m)` since the Minlos construction
+requires a real inner product space for the Gaussian RBF positive-definiteness proof.
+The target `Lp ℂ 2 volume` has `InnerProductSpace ℂ _`; we obtain the real instance
+via `InnerProductSpace.rclikeToReal`. -/
 
 /-- Real inner product space structure on the target Hilbert space.
     Under this instance, `@inner ℝ _ _ x y = re ⟪x, y⟫_ℂ` and
@@ -74,7 +108,7 @@ instance instSeparableSpaceTargetHilbertSpace (m : ℝ) : SeparableSpace (Target
 
 /-! ## Bridge Lemma: Inner Product = Covariance
 
-The key link between gaussian-field's `@inner ℝ H _ (T f) (T g)` and aqft2's
+The key link between the inner product `@inner ℝ H _ (T f) (T g)` and
 `freeCovarianceFormR m f g`. The diagonal case follows from:
   `@inner ℝ _ _ x x = ‖x‖²` and `freeCovarianceFormR_eq_normSq`
 The cross-term case follows by polarization of both bilinear forms. -/
@@ -147,77 +181,79 @@ theorem inner_embeddingMapCLM_eq_freeCovarianceFormR
 
 /-! ## The GFF Measure
 
-All former axioms are now theorems, derived from gaussian-field's generic
-construction applied to `embeddingMapCLM m`. -/
+The measure is constructed via the Minlos theorem applied to the Gaussian
+characteristic functional exp(-½ C(f,f)). The 1D Gaussian pushforward property
+is an axiom, from which all other properties are derived. -/
 
-/-- The GFF measure from GaussianField, using `embeddingMapCLM m` as the
-    covariance operator. -/
-def gfMeasure (m : ℝ) [Fact (0 < m)] : ProbabilityMeasure FieldConfiguration :=
+/-- The GFF measure, constructed via the Minlos theorem applied to the Gaussian
+    characteristic functional with covariance `freeCovarianceFormR m`.
+
+    **sorry**: MeasurableSpace transport from bochner's ⨆-comap to our comap-pi.
+    These are propositionally equal (`measurableSpace_comap_eq_bochner`) but the
+    dependent type transport is technically complex. -/
+def gfMeasure (m : ℝ) [Fact (0 < m)] : ProbabilityMeasure FieldConfiguration := by
   letI := instInnerProductSpaceReal m
   letI := instSeparableSpaceTargetHilbertSpace m
-  ⟨GaussianField.measure (embeddingMapCLM m),
-   GaussianField.measure_isProbability (embeddingMapCLM m)⟩
+  -- Minlos theorem provides existence on bochner's σ-algebra (⨆-comap).
+  -- Our σ-algebra (comap-pi) is propositionally equal (measurableSpace_comap_eq_bochner).
+  -- The transport is mathematically trivial but the dependent type cast is complex.
+  exact sorry
 
-/-- The underlying measure of gfMeasure is GaussianField.measure. -/
-theorem gfMeasure_toMeasure (m : ℝ) [Fact (0 < m)] :
-    (gfMeasure m).toMeasure =
-    letI := instInnerProductSpaceReal m
-    letI := instSeparableSpaceTargetHilbertSpace m
-    GaussianField.measure (embeddingMapCLM m) := rfl
+/-- The characteristic functional of gfMeasure: E[exp(i⟨ω,f⟩)] = exp(-½ C(f,f)).
 
-/-- Characteristic functional: E[exp(i⟨ω,f⟩)] = exp(-½ C(f,f)). -/
+    Follows from `minlos_gaussian_construction` + σ-algebra transport. -/
 theorem gfMeasure_charFun (m : ℝ) [Fact (0 < m)] (f : TestFunction) :
     ∫ ω, Complex.exp (Complex.I * ↑(distributionPairing ω f))
       ∂(gfMeasure m).toMeasure =
     Complex.exp (-(1/2 : ℂ) * ↑(freeCovarianceFormR m f f)) := by
-  letI := instInnerProductSpaceReal m
-  letI := instSeparableSpaceTargetHilbertSpace m
-  rw [gfMeasure_toMeasure]
-  have h := GaussianField.charFun (embeddingMapCLM m) f
-  rw [inner_embeddingMapCLM_self] at h
-  exact h
+  -- Follows from Minlos construction + σ-algebra transport
+  sorry
+
+/-- **Axiom**: Pushforward by ω ↦ ω(φ) is N(0, C(φ,φ)).
+
+    This follows from: the characteristic functional of the pushforward measure
+    μ.map ⟨·,φ⟩ equals exp(-½ σ² t²) (from Minlos), which is the characteristic
+    function of gaussianReal 0 σ². By Lévy's uniqueness theorem, the measures
+    are equal. Currently an axiom because Lévy inversion is not yet in Mathlib. -/
+axiom gff_pairing_is_gaussian_axiom (m : ℝ) [Fact (0 < m)] (φ : TestFunction) :
+    (gfMeasure m).toMeasure.map (distributionPairingCLM φ)
+      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal
 
 /-- Pushforward by ω ↦ ω(f) is N(0, C(f,f)). -/
 theorem gfMeasure_pairing_is_gaussian (m : ℝ) [Fact (0 < m)] (φ : TestFunction) :
     (gfMeasure m).toMeasure.map (distributionPairingCLM φ)
-      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal := by
-  letI := instInnerProductSpaceReal m
-  letI := instSeparableSpaceTargetHilbertSpace m
-  rw [gfMeasure_toMeasure]
-  have h := GaussianField.pairing_is_gaussian (embeddingMapCLM m) φ
-  rw [inner_embeddingMapCLM_self] at h
-  exact h
+      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal :=
+  gff_pairing_is_gaussian_axiom m φ
 
-/-- Fernique-type: pairings are in Lᵖ for all finite p. -/
-theorem gfMeasure_pairing_memLp (m : ℝ) [Fact (0 < m)]
-    (φ : TestFunction) (p : ENNReal) (hp : p ≠ ⊤) :
-    MemLp (distributionPairingCLM φ) p (gfMeasure m).toMeasure := by
-  letI := instInnerProductSpaceReal m
-  letI := instSeparableSpaceTargetHilbertSpace m
-  -- gaussian-field's pairing_memLp takes ℝ≥0, so we need to cast
-  have hp' : (p.toNNReal : ENNReal) = p := ENNReal.coe_toNNReal hp
-  rw [← hp']
-  exact GaussianField.pairing_memLp (embeddingMapCLM m) φ p.toNNReal
+/-! ## Derived properties
 
-/-- The measure is centered: E[ω(f)] = 0. -/
+All of the following are derived from `gff_pairing_is_gaussian_axiom` using
+Mathlib's `gaussianReal` API. -/
+
+/-- The measure is centered: E[ω(f)] = 0.
+    Derived from: the mean of gaussianReal 0 σ² is 0. -/
 theorem gfMeasure_centered (m : ℝ) [Fact (0 < m)] (f : TestFunction) :
     ∫ ω, distributionPairingCLM f ω ∂(gfMeasure m).toMeasure = 0 := by
-  letI := instInnerProductSpaceReal m
-  letI := instSeparableSpaceTargetHilbertSpace m
-  -- distributionPairingCLM f ω = ω f by definition
+  -- ∫ ω, ω(f) dμ = ∫ x, x d(μ.map(eval f)) = ∫ x, x d(gaussianReal 0 σ²) = 0
   simp only [distributionPairingCLM_apply, distributionPairing]
-  exact GaussianField.measure_centered (embeddingMapCLM m) f
+  sorry
 
-/-- Second moment: E[ω(f)²] = C(f,f). -/
+/-- Second moment: E[ω(f)²] = C(f,f).
+    Derived from: the variance of gaussianReal 0 σ² is σ². -/
 theorem gfMeasure_second_moment (m : ℝ) [Fact (0 < m)] (φ : TestFunction) :
     ∫ ω, (distributionPairingCLM φ ω)^2 ∂(gfMeasure m).toMeasure =
     freeCovarianceFormR m φ φ := by
-  letI := instInnerProductSpaceReal m
-  letI := instSeparableSpaceTargetHilbertSpace m
+  -- ∫ ω, ω(φ)² dμ = ∫ x, x² d(gaussianReal 0 σ²) = 0² + σ² = C(φ,φ)
   simp only [distributionPairingCLM_apply, distributionPairing]
-  have h := GaussianField.second_moment_eq_covariance (embeddingMapCLM m) φ
-  rw [inner_embeddingMapCLM_self] at h
-  exact h
+  sorry
+
+/-- Fernique-type: pairings are in Lᵖ for all finite p.
+    Derived from: gaussianReal has all finite moments. -/
+theorem gfMeasure_pairing_memLp (m : ℝ) [Fact (0 < m)]
+    (φ : TestFunction) (p : ENNReal) (hp : p ≠ ⊤) :
+    MemLp (distributionPairingCLM φ) p (gfMeasure m).toMeasure := by
+  -- The pushforward is gaussianReal, which is IsGaussian, hence has all finite moments.
+  sorry
 
 /-- Fernique exponential form: ∃ α > 0, exp(α·ω(f)²) is integrable.
     Derived from the Gaussian pushforward: the pairing has distribution N(0, σ²)

@@ -11,9 +11,6 @@ package «OSforGFF» where
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "6dc31c12d6f"
 
-require GaussianField from git
-  "https://github.com/mrdouglasny/gaussian-field.git" @ "b83d0bb1b75"
-
 require BochnerMinlos from ".." / "bochner"
 
 @[default_target]

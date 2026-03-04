@@ -18,8 +18,9 @@ theorem gaussianFreeField_satisfies_all_OS_axioms (m : ℝ) [Fact (0 < m)] :
   OS4_Ergodicity (μ_GFF m)
 ```
 
-**Status:** The master theorem chain has **0 `sorry`** statements and **1 custom axiom**
-(`schwartz_isHilbertNuclear`: Schwartz space is Hilbert-nuclear).
+**Status:** The master theorem chain has **0 `sorry`** statements and **2 custom axioms**
+(`schwartz_isHilbertNuclear`: Schwartz space is Hilbert-nuclear;
+`schwartz_separableSpace`: Schwartz space is separable).
 ~31,000 lines of Lean across 50 files in `OSforGFF/`.
 
 ## Dependencies
@@ -143,7 +144,7 @@ from the characteristic functional via Lévy's uniqueness theorem.
 
 | File | Contents |
 |------|----------|
-| [GaussianFieldBridge](OSforGFF/GaussianFieldBridge.lean) | Nuclear axiom, Minlos measure construction, Gaussian axiom, derived properties |
+| [GaussianFieldBridge](OSforGFF/GaussianFieldBridge.lean) | Nuclear/separable axioms, Minlos measure construction, Gaussian pushforward (proved via Lévy), derived properties |
 | [GFFMconstruct](OSforGFF/GFFMconstruct.lean) | GFF measure interface: covariance → CLM → μ |
 | [GFFExponentialIntegrability](OSforGFF/GFFExponentialIntegrability.lean) | Exponential integrability of GFF linear functionals |
 | [GaussianMoments](OSforGFF/GaussianMoments.lean) | Gaussian moments: all n-point functions are integrable |

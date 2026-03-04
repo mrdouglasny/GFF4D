@@ -13,9 +13,10 @@ with covariance operator `embeddingMapCLM m`.
 
 The construction has three components:
 
-### 1. Nuclear space axiom
+### 1. Nuclear space axioms
 `schwartz_isHilbertNuclear` axioms that Schwartz space 𝓢(ℝ⁴,ℝ) is Hilbert-nuclear
-(Gel'fand-Vilenkin, Trèves). This is the type class required by bochner's Minlos theorem.
+(Gel'fand-Vilenkin, Trèves). `schwartz_separableSpace` axioms that it is separable
+(Reed-Simon). Both are required by bochner's Minlos theorem.
 
 ### 2. Covariance operator T (concrete — from aqft2)
 `embeddingMapCLM m : TestFunction →L[ℝ] L²(ℝ⁴,ℂ)` is fully proved in CovarianceR.lean
@@ -36,17 +37,12 @@ are derived from that.
 - The real inner product on `Lp ℂ 2 volume` comes from `InnerProductSpace.rclikeToReal`
 - `@inner ℝ _ _ (T f) (T g) = freeCovarianceFormR m f g` (bridge lemma, by polarization)
 
-## Sorries in this file
+## MeasurableSpace transport
 
-The `sorry` markers in `gfMeasure` and `gfMeasure_charFun` are for the
-MeasurableSpace transport: bochner's Minlos theorem constructs a measure on the
-⨆-comap σ-algebra, while this project uses comap-pi. These are propositionally
-equal (`measurableSpace_comap_eq_bochner`), but the dependent type transport is
-technically complex.
-
-The `sorry` markers in `gfMeasure_centered`, `gfMeasure_second_moment`, and
-`gfMeasure_pairing_memLp` are for deriving properties from the Gaussian
-pushforward axiom via Mathlib's `gaussianReal` API.
+The Minlos theorem constructs a measure on bochner's ⨆-comap σ-algebra, while
+this project uses comap-pi. These are propositionally equal
+(`measurableSpace_comap_eq_bochner`), and the transport is handled by
+`integral_cast_ms_prob` (subst + rfl).
 -/
 
 import OSforGFF.Basic
@@ -66,8 +62,9 @@ namespace GaussianFieldBridge
 
 /-! ## Axioms
 
-This file contains one axiom:
+This file contains two axioms:
 - `schwartz_isHilbertNuclear`: Schwartz space is Hilbert-nuclear (Gel'fand-Vilenkin)
+- `schwartz_separableSpace`: Schwartz space is separable (Reed-Simon)
 
 The Gaussian pushforward property (`gfMeasure_pairing_is_gaussian`) is proved
 from the characteristic functional via Lévy's uniqueness theorem. -/
@@ -79,9 +76,12 @@ axiom schwartz_isHilbertNuclear : IsHilbertNuclear TestFunction
 attribute [instance] schwartz_isHilbertNuclear
 
 /-- Schwartz space is separable (Fréchet space with countable seminorms).
-    Standard result (Reed-Simon, Vol. 1); synthesis gap in Mathlib. -/
-instance schwartz_separableSpace : SeparableSpace TestFunction := by
-  sorry
+    Standard result (Reed-Simon, Vol. 1); synthesis gap in Mathlib.
+    Proved in gaussian-field library (`SchwartzNuclear.HermiteNuclear.schwartz_separableSpace`)
+    via the Hermite basis expansion `hasSum_basisVec` + CLE transfer. -/
+axiom schwartz_separableSpace : SeparableSpace TestFunction
+
+attribute [instance] schwartz_separableSpace
 
 /-- Schwartz space is nonempty (the zero function is Schwartz). -/
 instance schwartz_nonempty : Nonempty TestFunction := ⟨0⟩
@@ -186,29 +186,56 @@ The measure is constructed via the Minlos theorem applied to the Gaussian
 characteristic functional exp(-½ C(f,f)). The 1D Gaussian pushforward property
 is an axiom, from which all other properties are derived. -/
 
-/-- The GFF measure, constructed via the Minlos theorem applied to the Gaussian
-    characteristic functional with covariance `freeCovarianceFormR m`.
+/-- Integral is invariant under propositional MeasurableSpace transport
+    through ProbabilityMeasure.toMeasure. -/
+private lemma integral_cast_ms_prob {α E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    {ms1 ms2 : MeasurableSpace α} (h : ms1 = ms2)
+    (pm : @ProbabilityMeasure α ms2) (f : α → E) :
+    @integral α E _ _ ms1 (@ProbabilityMeasure.toMeasure α ms1 (h ▸ pm)) f =
+    @integral α E _ _ ms2 (@ProbabilityMeasure.toMeasure α ms2 pm) f := by
+  subst h; rfl
 
-    **sorry**: MeasurableSpace transport from bochner's ⨆-comap to our comap-pi.
-    These are propositionally equal (`measurableSpace_comap_eq_bochner`) but the
-    dependent type transport is technically complex. -/
-def gfMeasure (m : ℝ) [Fact (0 < m)] : ProbabilityMeasure FieldConfiguration := by
+private def gfMeasure_aux (m : ℝ) [Fact (0 < m)] :
+    { μ : ProbabilityMeasure FieldConfiguration //
+      ∀ f : TestFunction,
+        ∫ ω, Complex.exp (Complex.I * ↑(ω f))
+          ∂μ.toMeasure =
+        gaussian_characteristic_functional (freeCovarianceFormR m) f } := by
   letI := instInnerProductSpaceReal m
   letI := instSeparableSpaceTargetHilbertSpace m
-  -- Minlos theorem provides existence on bochner's σ-algebra (⨆-comap).
-  -- Our σ-algebra (comap-pi) is propositionally equal (measurableSpace_comap_eq_bochner).
-  -- The transport is mathematically trivial but the dependent type cast is complex.
-  exact sorry
+  -- Get the Minlos measure (on bochner's ⨆-comap σ-algebra)
+  have h_minlos := gaussian_measure_characteristic_functional
+    (embeddingMapCLM m).toLinearMap
+    (freeCovarianceFormR m)
+    (fun f => by
+      rw [freeCovarianceFormR_eq_normSq]; congr 2; exact (embeddingMapCLM_apply m f).symm)
+    trivial
+    (freeCovarianceFormR_zero_left m 0)
+    (freeCovarianceFormR_continuous m)
+  -- Transport from bochner's σ-algebra to ours
+  have h_ms_eq : instMeasurableSpaceFieldConfiguration =
+    (⨆ (f : TestFunction), (borel ℝ).comap
+      (fun l : WeakDual ℝ TestFunction => (l : TestFunction →L[ℝ] ℝ) f)) :=
+    measurableSpace_comap_eq_bochner
+  refine ⟨h_ms_eq ▸ h_minlos.choose, fun f => ?_⟩
+  rw [integral_cast_ms_prob h_ms_eq]
+  exact h_minlos.choose_spec f
+
+/-- The GFF measure, constructed via the Minlos theorem applied to the Gaussian
+    characteristic functional with covariance `freeCovarianceFormR m`. -/
+def gfMeasure (m : ℝ) [Fact (0 < m)] : ProbabilityMeasure FieldConfiguration :=
+  (gfMeasure_aux m).val
 
 /-- The characteristic functional of gfMeasure: E[exp(i⟨ω,f⟩)] = exp(-½ C(f,f)).
 
-    Follows from `minlos_gaussian_construction` + σ-algebra transport. -/
+    Follows from `gaussian_measure_characteristic_functional` + σ-algebra transport. -/
 theorem gfMeasure_charFun (m : ℝ) [Fact (0 < m)] (f : TestFunction) :
     ∫ ω, Complex.exp (Complex.I * ↑(distributionPairing ω f))
       ∂(gfMeasure m).toMeasure =
     Complex.exp (-(1/2 : ℂ) * ↑(freeCovarianceFormR m f f)) := by
-  -- Follows from Minlos construction + σ-algebra transport
-  sorry
+  have h := (gfMeasure_aux m).property f
+  simp only [gaussian_characteristic_functional, gfMeasure, distributionPairing] at h ⊢
+  exact h
 
 /-- Pushforward by ω ↦ ω(φ) is N(0, C(φ,φ)).
 

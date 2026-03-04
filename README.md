@@ -35,7 +35,7 @@ Both axioms are proved in the [gaussian-field](https://github.com/mrdouglasny/ga
 
 ### BochnerMinlos
 
-The [bochner](../bochner) library (local path dependency) provides fully proven
+The [bochner](https://github.com/mrdouglasny/bochner) library provides fully proven
 versions of the Bochner and Minlos theorems for nuclear spaces, with 0 sorries
 and 0 custom axioms. This project imports:
 - **`minlos_theorem`** — existence of a probability measure on the dual of a
@@ -263,7 +263,7 @@ cd aqft2
 lake build
 ```
 
-Requires Lean 4 and Mathlib (pinned via `lake-manifest.json`).
+Requires Lean 4, Mathlib, and [BochnerMinlos](https://github.com/mrdouglasny/bochner) (pinned via `lake-manifest.json`).
 
 ## Authors
 

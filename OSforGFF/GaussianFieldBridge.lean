@@ -25,8 +25,9 @@ with `freeCovarianceFormR_eq_normSq`: C(f,f) = ‖T(f)‖²
 Given `IsHilbertNuclear TestFunction` and the Gaussian characteristic functional
 exp(-½ C(f,f)), the Minlos theorem yields a probability measure on the dual space
 with that characteristic functional. The 1D Gaussian pushforward property is
-an axiom (`gff_pairing_is_gaussian_axiom`), from which centredness, moments,
-and Fernique-type bounds are derived.
+proved from the characteristic functional via Lévy's uniqueness theorem
+(`Measure.ext_of_charFun`), and centredness, moments, and Fernique-type bounds
+are derived from that.
 
 ## Key type identifications
 
@@ -65,11 +66,11 @@ namespace GaussianFieldBridge
 
 /-! ## Axioms
 
-This file contains two axioms:
+This file contains one axiom:
 - `schwartz_isHilbertNuclear`: Schwartz space is Hilbert-nuclear (Gel'fand-Vilenkin)
-- `gff_pairing_is_gaussian_axiom`: pushforward of GFF measure by test function pairing is Gaussian
 
-See `texts/axioms.txt` for justification. -/
+The Gaussian pushforward property (`gfMeasure_pairing_is_gaussian`) is proved
+from the characteristic functional via Lévy's uniqueness theorem. -/
 
 /-- Schwartz space 𝓢(ℝ⁴,ℝ) is Hilbert-nuclear (Gel'fand-Vilenkin, Trèves).
     This is the nuclearity condition required by bochner's Minlos theorem. -/
@@ -209,25 +210,50 @@ theorem gfMeasure_charFun (m : ℝ) [Fact (0 < m)] (f : TestFunction) :
   -- Follows from Minlos construction + σ-algebra transport
   sorry
 
-/-- **Axiom**: Pushforward by ω ↦ ω(φ) is N(0, C(φ,φ)).
+/-- Pushforward by ω ↦ ω(φ) is N(0, C(φ,φ)).
 
-    This follows from: the characteristic functional of the pushforward measure
-    μ.map ⟨·,φ⟩ equals exp(-½ σ² t²) (from Minlos), which is the characteristic
-    function of gaussianReal 0 σ². By Lévy's uniqueness theorem, the measures
-    are equal. Currently an axiom because Lévy inversion is not yet in Mathlib. -/
-axiom gff_pairing_is_gaussian_axiom (m : ℝ) [Fact (0 < m)] (φ : TestFunction) :
-    (gfMeasure m).toMeasure.map (distributionPairingCLM φ)
-      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal
-
-/-- Pushforward by ω ↦ ω(f) is N(0, C(f,f)). -/
+    Proof: By Lévy's uniqueness theorem (`Measure.ext_of_charFun`), it suffices to
+    match characteristic functions. The charFun of the pushforward μ.map(eval_φ) at t
+    equals the char functional applied to t·φ (linearity), which by `gfMeasure_charFun`
+    equals exp(-½ t² C(φ,φ)) — exactly `charFun_gaussianReal` of N(0, C(φ,φ)). -/
 theorem gfMeasure_pairing_is_gaussian (m : ℝ) [Fact (0 < m)] (φ : TestFunction) :
     (gfMeasure m).toMeasure.map (distributionPairingCLM φ)
-      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal :=
-  gff_pairing_is_gaussian_axiom m φ
+      = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal := by
+  -- The pushforward is a probability measure
+  haveI : IsProbabilityMeasure ((gfMeasure m).toMeasure.map (distributionPairingCLM φ)) :=
+    Measure.isProbabilityMeasure_map (fieldConfiguration_eval_measurable φ).aemeasurable
+  -- By Lévy uniqueness: same char functions → same measures
+  apply Measure.ext_of_charFun
+  funext t
+  -- LHS: charFun of the pushforward. Unfold only the LHS.
+  conv_lhs => rw [charFun_apply_real]
+  -- Change of variables via integral_map
+  have h_map : ∫ x, cexp (↑t * ↑x * I)
+      ∂((gfMeasure m).toMeasure.map (distributionPairingCLM φ))
+    = ∫ ω, cexp (↑t * ↑(distributionPairingCLM φ ω) * I)
+      ∂(gfMeasure m).toMeasure :=
+    integral_map (fieldConfiguration_eval_measurable φ).aemeasurable (by fun_prop)
+  rw [h_map]
+  -- Use char functional at t • φ
+  have h_char := gfMeasure_charFun m (t • φ)
+  simp only [map_smul, smul_eq_mul, distributionPairing] at h_char
+  -- Match integrands: t * (ω φ) * I = I * ↑(t * ω(φ))
+  simp_rw [distributionPairingCLM_apply, distributionPairing]
+  simp_rw [show ∀ (ω : FieldConfiguration), (↑t : ℂ) * ↑(ω φ) * I = I * ↑(t * ω φ)
+    from fun ω => by push_cast; ring]
+  rw [h_char]
+  -- RHS: unfold charFun of gaussianReal 0 σ²
+  rw [charFun_gaussianReal]
+  -- Both sides are complex exponentials; show the arguments match
+  congr 1
+  simp only [Complex.ofReal_zero, mul_zero, zero_mul, zero_sub]
+  rw [freeCovarianceFormR_smul_left, freeCovarianceFormR_smul_right]
+  rw [Real.coe_toNNReal _ (freeCovarianceFormR_pos m φ)]
+  push_cast; ring
 
 /-! ## Derived properties
 
-All of the following are derived from `gff_pairing_is_gaussian_axiom` using
+All of the following are derived from `gfMeasure_pairing_is_gaussian` using
 Mathlib's `gaussianReal` API. -/
 
 /-- The measure is centered: E[ω(f)] = 0.

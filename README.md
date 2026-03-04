@@ -18,8 +18,8 @@ theorem gaussianFreeField_satisfies_all_OS_axioms (m : ℝ) [Fact (0 < m)] :
   OS4_Ergodicity (μ_GFF m)
 ```
 
-**Status:** The master theorem chain has **0 `sorry`** statements and **2 custom axioms**
-(`schwartz_isHilbertNuclear`, `gff_pairing_is_gaussian_axiom`).
+**Status:** The master theorem chain has **0 `sorry`** statements and **1 custom axiom**
+(`schwartz_isHilbertNuclear`: Schwartz space is Hilbert-nuclear).
 ~31,000 lines of Lean across 50 files in `OSforGFF/`.
 
 ## Dependencies
@@ -137,9 +137,9 @@ and its properties.
 
 Construction of the GFF probability measure on tempered distributions,
 using the Minlos theorem (from the bochner library) with the Gaussian
-characteristic functional and two axioms: `schwartz_isHilbertNuclear`
-(Schwartz space is nuclear) and `gff_pairing_is_gaussian_axiom`
-(1D marginals are Gaussian).
+characteristic functional and one axiom: `schwartz_isHilbertNuclear`
+(Schwartz space is nuclear). The Gaussian pushforward property is proved
+from the characteristic functional via Lévy's uniqueness theorem.
 
 | File | Contents |
 |------|----------|

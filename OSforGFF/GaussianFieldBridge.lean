@@ -70,7 +70,14 @@ The Gaussian pushforward property (`gfMeasure_pairing_is_gaussian`) is proved
 from the characteristic functional via Lévy's uniqueness theorem. -/
 
 /-- Schwartz space 𝓢(ℝ⁴,ℝ) is Hilbert-nuclear (Gel'fand-Vilenkin, Trèves).
-    This is the nuclearity condition required by bochner's Minlos theorem. -/
+    This is the nuclearity condition required by bochner's Minlos theorem.
+
+    **Proof route via gaussian-field:** The gaussian-field library proves
+    `DyninMityaginSpace (SchwartzMap D ℝ)` in `SchwartzNuclear.HermiteNuclear`,
+    which provides a Schauder basis with rapid-decay coefficients via the
+    topological isomorphism `SchwartzMap D ℝ ≃L[ℝ] RapidDecaySeq`. From this,
+    `IsHilbertNuclear` follows by constructing Hilbertian seminorms from the
+    rapid-decay weights and verifying the Hilbert-Schmidt embedding condition. -/
 axiom schwartz_isHilbertNuclear : IsHilbertNuclear TestFunction
 
 attribute [instance] schwartz_isHilbertNuclear

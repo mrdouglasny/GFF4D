@@ -297,9 +297,7 @@ theorem gfMeasure_centered (m : ℝ) [Fact (0 < m)] (f : TestFunction) :
   simp only [distributionPairingCLM_apply, distributionPairing]
   have h_gauss : (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω f)
       = gaussianReal 0 (freeCovarianceFormR m f f).toNNReal := by
-    have := gfMeasure_pairing_is_gaussian m f
-    simp only [distributionPairingCLM_apply, distributionPairing] at this
-    exact this
+    exact gfMeasure_pairing_is_gaussian m f
   have h_map := integral_map (fieldConfiguration_eval_measurable f).aemeasurable
     (measurable_id.aestronglyMeasurable
       (μ := (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω f)))
@@ -315,9 +313,7 @@ theorem gfMeasure_second_moment (m : ℝ) [Fact (0 < m)] (φ : TestFunction) :
   -- Convert the Gaussian pushforward to use the lambda form
   have h_gauss : (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω φ)
       = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal := by
-    have := gfMeasure_pairing_is_gaussian m φ
-    simp only [distributionPairingCLM_apply, distributionPairing] at this
-    exact this
+    exact gfMeasure_pairing_is_gaussian m φ
   set σ := (freeCovarianceFormR m φ φ).toNNReal with hσ_def
   -- variance = second moment since mean = 0
   have h_var : Var[fun ω : FieldConfiguration => ω φ; (gfMeasure m).toMeasure] =
@@ -345,9 +341,7 @@ theorem gfMeasure_pairing_memLp (m : ℝ) [Fact (0 < m)]
     exact h
   have h_gauss : (gfMeasure m).toMeasure.map (fun ω : FieldConfiguration => ω φ)
       = gaussianReal 0 (freeCovarianceFormR m φ φ).toNNReal := by
-    have := gfMeasure_pairing_is_gaussian m φ
-    simp only [distributionPairingCLM_apply, distributionPairing] at this
-    exact this
+    exact gfMeasure_pairing_is_gaussian m φ
   have hp' : (p.toNNReal : ENNReal) = p := ENNReal.coe_toNNReal hp
   rw [← hp']
   have h_memLp : MemLp id p.toNNReal
